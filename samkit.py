@@ -1,11 +1,14 @@
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 from segment_anything.utils.transforms import ResizeLongestSide
 from torch.nn import functional as F
-import torch
 import matplotlib.pyplot as plt
-import cv2
+from statistics import mean
+from tqdm import tqdm
+import dataset as ds
 import utils
 import monai
+import torch
+import cv2
 
 
 class SAMkit:
@@ -21,12 +24,39 @@ class SAMkit:
         __init__(self, model_path):
             Initializes the SAMkit object with the provided model path and model type.
 
+        load_image(self, image):
+            Loads the image.
+        
+        save_mask(self, binary_mask, output_path):
+            Saves the resulting segmentation mask to the specified output path.
+
+        preprocess_input(self, image, bbox_prompt):
+            Transform and preprocesses the input image and bounding boxes to the required size and converts them to tensors.
+
+        encode_input(self, input_image, bbox_prompt):
+            Encodes the input image and bounding boxes.
+
+        postprocess_mask(self, low_res_masks, transformed_input_size, original_input_size):
+            Post-processes the segmentation mask to the original input size.
+
+        generate_mask(self, image_embedding, sparse_embeddings, dense_embeddings, multimask_output=False):
+            Generates the segmentation mask.
+
         segment(self):
             Performs image segmentation using the loaded image and input prompt.
 
-        save_segmentation(self, output_path):
-            Saves the resulting segmentation map to the specified output path.
+        auto_segment(self, image, bbox_prompt, output_path, multimask_output=False):
+            Performs image segmentation using the provided image and input prompt.
 
+        visualize(self, image, bbox_prompt, output_path, multimask_output=False):
+            Visualizes the segmentation mask.
+
+        get_bis_dataset(self, dataset, preprocess, img_size, device):
+            Returns the Building Image Segmentation (BIS) Dataset.
+
+        forward(self, input_image, bbox_prompt):
+            Performs a forward pass on the SAM model.
+        
         fine_tune(self, train_data, val_data, num_epochs=10, batch_size=16):
             Fine-tunes the SAM model using the provided training and validation data.
 
@@ -288,31 +318,76 @@ class SAMkit:
             # Save the figure
             plt.savefig(output_path, bbox_inches='tight')
 
-    # def train_one_epoch():
     
-    
-    def fine_tune(self, train_data, val_data, lr=1e-5, num_epochs=10, batch_size=16):
+    def get_bis_dataset(self, dataset):
         """
-        Fine-tunes the SAM model using the provided training and validation data.
+        Prepare the data of the desired set.
+        
+        Args:
+            dataset (HuggingFace dataset): The set of the data to be prepared.
+
+        Returns:
+            train_dataloader (torch.utils.data.DataLoader): The data loader of the desired set.
+        """
+        # creating the dataset
+        train_dataset = ds.BISDataset(dataset=dataset, preprocess=self.sam.preprocess, img_size=self.sam.image_encoder.img_size, device=self.device)
+
+        # creating the data loader
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=False)
+
+        return train_dataloader
+
+    def forward_pass(self, image, bbox_prompt):
+        """
+        Performs a forward pass on the image and the prompt.
+        """
+        # preprocessing and transforming the image and bounding box prompt(s) with sam's functions
+        input_image, bbox_prompt = self.preprocess_input(image, bbox_prompt)
+        
+        # encoding the image and the prompt with sam's encoders
+        image_embedding, sparse_embeddings, dense_embeddings = self.encode_input(input_image, bbox_prompt)
+
+        # generating the segmentation mask from the image and the prompt embeddings
+        low_res_masks, _ = self.generate_mask(self, image_embedding, sparse_embeddings, dense_embeddings, multimask_output=False)
+
+        # postprocessing the segmentation mask and converting it to a numpy array
+        binary_mask = self.postprocess_mask(low_res_masks, transformed_input_size=tuple(input_image.shape[-2:]), original_input_size=image.shape[:2])
+
+        return binary_mask
+
+    def fine_tune(self, train_data, lr=1e-5, num_epochs=10):
+        """
+        Fine-tunes the SAM model using the provided training.
         """
         # setting the model to training mode
         self.sam.train()
 
         # creating the training and validation data loaders
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
-        val_loader = torch.utils.data.DataLoader(val_data, batch_size=batch_size, shuffle=False)
+        train_loader = self.get_bis_dataset(train_data)
 
         # creating the optimizer and the loss function
         optimizer = torch.optim.Adam(self.sam.mask_decoder.parameters(), lr=lr)
         criterion = monai.losses.DiceCELoss(sigmoid=True, squared_pred=True, reduction='mean')
 
-        # training the model
         for epoch in range(num_epochs):
-            # training the model for one epoch
-            train_loss = self.train_one_epoch(train_loader, optimizer, criterion)
+            epoch_losses = []
+            for input_image, box_prompt, gt_mask in tqdm(train_loader):
+                if box_prompt.shape[1] == 0:
+                    continue
 
-            # validating the model for one epoch
-            val_loss = self.validate(val_loader, criterion)
+                # forward pass
+                pred_mask = self.forward_pass(input_image, box_prompt)
 
-            # printing the training and validation loss for each epoch
-            print(f"Epoch: {epoch+1}/{num_epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
+                # compute loss
+                loss = criterion(pred_mask, gt_mask)
+
+                # backward pass (compute gradients of parameters w.r.t. loss)
+                optimizer.zero_grad()
+                loss.backward()
+
+                # optimize
+                optimizer.step()
+                epoch_losses.append(loss.item())
+
+            print(f'EPOCH: {epoch}')
+            print(f'Mean loss: {mean(epoch_losses)}')
