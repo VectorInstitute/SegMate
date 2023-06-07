@@ -91,6 +91,17 @@ class SAMkit:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         return image
+    
+    def show_image(self, image):
+        """
+        Shows the image.
+
+        Args:
+            image (numpy.ndarray): The image to be shown.
+        """
+        # showing the image
+        plt.imshow(image)
+        plt.show()
 
     def save_mask(self, binary_mask, output_path):
         """
