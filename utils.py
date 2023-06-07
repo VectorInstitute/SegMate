@@ -1,5 +1,6 @@
 from PIL import Image
 
+import cv2
 import numpy as np
 from pycocotools import mask as coco_mask
 import matplotlib.pyplot as plt
@@ -145,3 +146,33 @@ def load_model_hf(repo_id: str, filename: str, ckpt_config_filename: str, device
     model.eval()
     
     return model
+
+
+def load_image(image_path: str) -> np.ndarray:
+    """
+    Loads the image.
+
+    Args:
+        image_path (str): The path to the image.
+
+    Returns:
+        image (numpy.ndarray): The loaded image.
+    """
+    # loading the image
+    image = cv2.imread(image_path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    return image
+
+
+def show_image(image: np.ndarray) -> None:
+    """
+    Shows the image.
+
+    Args:
+        image (numpy.ndarray): The image to be shown.
+    """
+    # showing the image
+    plt.imshow(image)
+    plt.axis('off')
+    plt.show()

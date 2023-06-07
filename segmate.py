@@ -19,7 +19,7 @@ import dataset as ds
 import utils
 
 
-class SamKit:
+class SegMate:
     """
     Class for interacting with the Segment Anything Model (SAM) for image segmentation.
 
@@ -59,35 +59,6 @@ class SamKit:
         ckpt_config = "GroundingDINO_SwinB.cfg.py"
         self.groundingdino = utils.load_model_hf(ckpt_repo, ckpt_file, ckpt_config, self.device)
 
-
-    def load_image(self, image_path: str):
-        """
-        Loads the image.
-
-        Args:
-            image_path (str): The path to the image.
-
-        Returns:
-            image (numpy.ndarray): The loaded image.
-        """
-        # loading the image
-        image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        return image
-    
-    def show_image(self, image):
-        """
-        Shows the image.
-
-        Args:
-            image (numpy.ndarray): The image to be shown.
-        """
-        # showing the image
-        plt.imshow(image)
-        ax.axis('off')
-        plt.show()
-
     def save_mask(self, binary_mask: np.ndarray, output_path):
         """
         Saves the resulting segmentation mask to the specified output path.
@@ -124,7 +95,7 @@ class SamKit:
         bbox_prompt = torch.as_tensor(
             bbox_prompt, dtype=torch.float, device=self.device)
 
-        return image, bbox_prompt
+        return input_image, bbox_prompt
 
     def encode_input(self, input_image, bbox_prompt):
         """
@@ -250,7 +221,7 @@ class SamKit:
 
         # loading the image if the input is a path to an image
         if isinstance(image, str):
-            image = self.load_image(image)
+            image = utils.load_image(image)
 
         # converting the text prompt to a list of bounding boxes with a zero-shot object detection
         # model (Grounding Dino, etc.)
@@ -325,7 +296,7 @@ class SamKit:
 
         # loading the image if the input is a path to an image
         if isinstance(image, str):
-            image = self.load_image(image)
+            image = utils.load_image(image)
 
         masks = mask_generator.generate(image)
 
@@ -342,7 +313,7 @@ class SamKit:
         """
         # loading the image if the input is a path to an image
         if isinstance(image, str):
-            image = self.load_image(image)
+            image = utils.load_image(image)
 
         # Create a new figure with two axes
         _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
