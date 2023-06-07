@@ -101,6 +101,7 @@ class SAMkit:
         """
         # showing the image
         plt.imshow(image)
+        ax.axis('off')
         plt.show()
 
     def save_mask(self, binary_mask, output_path):
