@@ -1,7 +1,16 @@
+from PIL import Image
+
 import numpy as np
 from pycocotools import mask as coco_mask
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import torch
+import groundingdino.datasets.transforms as T
+from groundingdino.models import build_model
+from groundingdino.util.slconfig import SLConfig
+from groundingdino.util.utils import clean_state_dict
+from huggingface_hub import hf_hub_download
+
 
 def show_bounding_boxes(image, bounding_boxes):
     # Create a figure and axes
@@ -19,6 +28,7 @@ def show_bounding_boxes(image, bounding_boxes):
     # Configure plot settings
     ax.axis('off')
     plt.show()
+
 
 def get_segmentation_mask(segmentation_label, size):
     """
@@ -39,6 +49,7 @@ def get_segmentation_mask(segmentation_label, size):
     
     return binary_mask
 
+
 def convert_bboxes(bboxes):
     """
     Converts a list of bounding boxes from [x_min, y_min, width, height] format to [x_min, y_min, x_max, y_max] format.
@@ -57,6 +68,7 @@ def convert_bboxes(bboxes):
         y_max = y_min + height
         converted_bboxes.append([x_min, y_min, x_max, y_max])
     return np.array(converted_bboxes)
+
 
 def show_anns(anns, ax):
     """
@@ -81,3 +93,55 @@ def show_anns(anns, ax):
         color_mask = np.concatenate([np.random.random(3), [0.35]])
         img[m] = color_mask
     ax.imshow(img)
+
+
+def transform_image(image: Image) -> torch.Tensor:
+    """
+    Transforms an image using standard transformations for image-based models.
+
+    Parameters:
+    image (Image): The PIL Image to be transformed.
+
+    Returns:
+    torch.Tensor: The transformed image as a tensor.
+    """
+    transform = T.Compose([
+        T.RandomResize([800], max_size=1333),
+        T.ToTensor(),
+        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ])
+    image_transformed, _ = transform(image, None)
+    return image_transformed
+
+
+def load_model_hf(repo_id: str, filename: str, ckpt_config_filename: str, device: str = 'cpu') -> torch.nn.Module:
+    """
+    Loads a model from HuggingFace Model Hub.
+
+    Parameters:
+    repo_id (str): Repository ID on HuggingFace Model Hub.
+    filename (str): Name of the model file in the repository.
+    ckpt_config_filename (str): Name of the config file for the model in the repository.
+    device (str): Device to load the model onto. Default is 'cpu'.
+
+    Returns:
+    torch.nn.Module: The loaded model.
+    """
+    # Ensure the repo ID and filenames are valid
+    assert isinstance(repo_id, str) and repo_id, "Invalid repository ID"
+    assert isinstance(filename, str) and filename, "Invalid model filename"
+    assert isinstance(ckpt_config_filename, str) and ckpt_config_filename, "Invalid config filename"
+    
+    # Download the config file and build the model from it
+    cache_config_file = hf_hub_download(repo_id=repo_id, filename=ckpt_config_filename)
+    args = SLConfig.fromfile(cache_config_file)
+    model = build_model(args)
+    model.to(device)
+    
+    # Download the model checkpoint and load it into the model
+    cache_file = hf_hub_download(repo_id=repo_id, filename=filename)
+    checkpoint = torch.load(cache_file, map_location=device)
+    model.load_state_dict(clean_state_dict(checkpoint['model']), strict=False)
+    model.eval()
+    
+    return model
