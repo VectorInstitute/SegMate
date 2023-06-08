@@ -1,40 +1,36 @@
-"""This file contains the SamKit class"""
+"""
+This file contains the SegMate class
+"""
 from statistics import mean
-from PIL import Image
 from typing import Union
 
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 from segment_anything.utils.transforms import ResizeLongestSide
 from torch.nn import functional as F
+from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import monai
 import torch
 import cv2
 import numpy as np
-from groundingdino.util import box_ops
-from groundingdino.util.inference import predict
 
-import dataset as ds
 import utils
+from object_detector import ObjectDetector
 
 
 class SegMate:
     """
     Class for interacting with the Segment Anything Model (SAM) for image segmentation.
-
-    Attributes:
-        model_type (str): The type of SAM: (vit_b, vit_l, vit_h) -> b: base, l: large, h: huge.
-        checkpoint (str): The path to the pre-trained SAM.
-        device (str):  The device to load the model on (default: cuda).
     """
 
     def __init__(
         self,
         model_type: str = 'vit_b',
         checkpoint: str = 'sam_vit_b_01ec64.pth',
-        device: str = 'cuda'
-    ):
+        device: str = 'cuda',
+        object_detector: ObjectDetector = None,
+    ) -> None:
         """
         Initializes the SamKit object with the provided model path.
 
@@ -46,20 +42,19 @@ class SegMate:
         self.model_type = model_type
         self.checkpoint = checkpoint
         self.device = device
+        self.object_detector = object_detector
 
-        self.sam = sam_model_registry[self.model_type](checkpoint=self.checkpoint)
+        self.sam = sam_model_registry[self.model_type](
+            checkpoint=self.checkpoint)
         self.sam.to(self.device)
 
-    def build_groundingdino(self):
+    def add_object_detector(self, object_detector: ObjectDetector) -> None:
         """
-        Build the GroundingDINO model.
+        Adds an object detector to the SegMate instance.
         """
-        ckpt_repo = "ShilongLiu/GroundingDINO"
-        ckpt_file = "groundingdino_swinb_cogcoor.pth"
-        ckpt_config = "GroundingDINO_SwinB.cfg.py"
-        self.groundingdino = utils.load_model_hf(ckpt_repo, ckpt_file, ckpt_config, self.device)
+        self.object_detector = object_detector
 
-    def save_mask(self, binary_mask: np.ndarray, output_path):
+    def save_mask(self, binary_mask: np.ndarray, output_path: str) -> None:
         """
         Saves the resulting segmentation mask to the specified output path.
 
@@ -70,7 +65,11 @@ class SegMate:
         # saving the segmentation mask
         cv2.imwrite(output_path, binary_mask)
 
-    def preprocess_input(self, image, bbox_prompt):
+    def preprocess_input(
+        self,
+        image: np.ndarray,
+        bbox_prompt: np.ndarray
+    ) -> tuple(torch.Tensor, torch.Tensor):
         """
         Transform and preprocesses the input image and bounding boxes to the required size and
         converts them to tensors.
@@ -97,7 +96,11 @@ class SegMate:
 
         return input_image, bbox_prompt
 
-    def encode_input(self, input_image, bbox_prompt):
+    def encode_input(
+        self,
+        input_image: torch.Tensor,
+        bbox_prompt: torch.Tensor
+    ) -> tuple(torch.Tensor, torch.Tensor, torch.Tensor):
         """
         Encodes the input image and bounding boxes.
 
@@ -122,13 +125,19 @@ class SegMate:
 
         return image_embedding, sparse_embeddings, dense_embeddings
 
-    def postprocess_mask(self, low_res_masks, transformed_input_size, original_input_size):
+    def postprocess_mask(
+        self,
+        low_res_masks: torch.Tensor,
+        transformed_input_size: tuple(int, int),
+        original_input_size: tuple(int, int)
+    ) -> np.ndarray:
         """
         Post-processes the segmentation mask to the original input size.
 
         Args:
-            binary_mask (torch.Tensor): The binarized segmentation mask.
-            original_input_size (tuple): The original input size of the image.
+            low_res_masks (torch.Tensor): The generated segmentation mask.
+            transformed_input_size (tuple(int, int)): The size of the transformed input image.
+            original_input_size (tuple(int, int)): The size of the original input image.
 
         Returns:
             binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
@@ -144,11 +153,11 @@ class SegMate:
 
     def generate_mask(
         self,
-        image_embedding,
-        sparse_embeddings,
-        dense_embeddings,
-        multimask_output=False
-    ):
+        image_embedding: torch.Tensor,
+        sparse_embeddings: torch.Tensor,
+        dense_embeddings: torch.Tensor,
+        multimask_output: bool = False
+    ) -> tuple(torch.Tensor, torch.Tensor):
         """
         Generates the segmentation mask.
 
@@ -171,46 +180,25 @@ class SegMate:
         )
 
         return low_res_masks, iou_predictions
-    
-    def predict_dino(self, image_np, text_prompt, box_threshold, text_threshold):
-        """
-        Run the GroundingDINO model prediction.
-
-        Parameters:
-        image_pil (Image): Input PIL Image.
-        text_prompt (str): Text prompt for the model.
-        box_threshold (float): Box threshold for the prediction.
-        text_threshold (float): Text threshold for the prediction.
-
-        Returns:
-        Tuple containing boxes, logits, and phrases.
-        """
-        image_pil = Image.fromarray(image_np)  
-        image_trans = utils.transform_image(image_pil)
-        boxes, logits, phrases = predict(model=self.groundingdino,
-                                         image=image_trans,
-                                         caption=text_prompt,
-                                         box_threshold=box_threshold,
-                                         text_threshold=text_threshold,
-                                         device=self.device)
-        W, H = image_pil.size
-        # rescale boxes
-        boxes = box_ops.box_cxcywh_to_xyxy(boxes) * torch.Tensor([W, H, W, H]).to(boxes.device)  
-        return boxes, logits, phrases
 
     def segment(
-            self,
-            image: Union(str, np.ndarray), 
-            prompt: Union(tuple(str, float, float), np.ndarray), 
-            output_path=None
-        ):
+        self,
+        image: Union(str, np.ndarray),
+        text_prompt: tuple(str, float, float) = None,
+        boxes_prompt: np.ndarray = None,
+        points_prompt: tuple(np.ndarray, np.ndarray) = None,
+        output_path: str = None
+    ) -> np.ndarray:
         """
         Performs image segmentation using the loaded image and input prompt.
 
         Args:
             image (str): The image or the path to the image to be segmented.
-            prompt (str) or (numpy.ndarray): The prompt to be used for segmentation. The prompt can
-                be a text or a list of bounding boxes.
+            text_prompt (tuple(str, float, float)): The text prompt to be used for segmentation. The
+                tuple contains the text prompt, the box threshold, and the text threshold.
+            boxes_prompt (numpy.ndarray): The bounding boxes prompt to be used for segmentation.
+            points_prompt (tuple(numpy.ndarray, numpy.ndarray)): The points prompt to be used for
+                segmentation. The tuple contains the point coordinates and the point labels.
             output_path (str): The path to save the resulting segmentation mask.
 
         Returns:
@@ -225,53 +213,46 @@ class SegMate:
 
         # converting the text prompt to a list of bounding boxes with a zero-shot object detection
         # model (Grounding Dino, etc.)
-        if isinstance(prompt, tuple):
+        if text_prompt:
             # To be implemented
-            text_prompt, box_threshold, text_threshold = prompt
-            bbox_prompt, _, _ = self.predict_dino(image, text_prompt, box_threshold, text_threshold)
-        else:
-            # converting the bounding boxes from [x_min, y_min, width, height] format to
-            # [x_min, y_min, x_max, y_max] format
-            bbox_prompt = utils.convert_bboxes(prompt)
+            text, box_threshold, text_threshold = text_prompt
+            bbox_prompt, _, _ = self.object_detector.predict(
+                image, text, box_threshold, text_threshold)
+        if boxes_prompt:
+            bbox_prompt = torch.tensor(boxes_prompt).to(self.device)
+        if points_prompt:
+            point_coords, point_labels = points_prompt
+            point_coords = torch.tensor(point_coords).to(self.device)
+            point_labels = torch.tensor(point_labels).to(self.device)
 
         # performing image segmentation with sam
-        with torch.no_grad():
-            # preprocessing and transforming the image and bounding box prompt(s) with sam's
-            # functions
-            input_image, bbox_prompt = self.preprocess_input(
-                image, bbox_prompt)
-
-            # encoding the image and the prompt with sam's encoders
-            image_embedding, sparse_embeddings, dense_embeddings = self.encode_input(
-                input_image, bbox_prompt)
-
-            # generating the segmentation mask from the image and the prompt embeddings
-            low_res_masks, _ = self.generate_mask(
-                self, image_embedding, sparse_embeddings, dense_embeddings)
-
-            # postprocessing the segmentation mask and converting it to a numpy array
-            binary_mask = self.postprocess_mask(low_res_masks, transformed_input_size=tuple(
-                input_image.shape[-2:]), original_input_size=image.shape[:2])
-
+        masks = self.sam.predict_torch(
+            point_coords=point_coords,
+            point_labels=point_labels,
+            boxes=bbox_prompt,
+        )
+        binary_masks = masks.cpu().squeeze(1).numpy().astype(np.uint8)
         # saving the segmentation mask if the output path is provided
         if output_path is not None:
-            self.save_mask(binary_mask, output_path)
+            self.save_mask(binary_masks, output_path)
 
-        return binary_mask
+        return binary_masks
 
-    def auto_segment(self,
-                     image,
-                     points_per_side=32,
-                     pred_iou_thresh=0.86,
-                     stability_score_thresh=0.92,
-                     crop_n_layers=1,
-                     crop_n_points_downscale_factor=2,
-                     min_mask_region_area=100):
+    def auto_segment(
+        self,
+        image: Union(str, np.ndarray),
+        points_per_side: int=32,
+        pred_iou_thresh: float=0.86,
+        stability_score_thresh: float=0.92,
+        crop_n_layers: int=1,
+        crop_n_points_downscale_factor: int=2,
+        min_mask_region_area: int=100
+    ) -> np.ndarray:
         """
         Performs image segmentation using the automatic mask generation method.
 
         Args:
-            image (str): The image or the path to the image to be segmented.
+            image (str, numpy.ndarray): The image or the path to the image to be segmented.
             points_per_side (int): The number of points per side of the mask.
             pred_iou_thresh (float): The IOU threshold for the predicted mask.
             stability_score_thresh (float): The stability score threshold for the predicted mask.
@@ -302,12 +283,17 @@ class SegMate:
 
         return masks
 
-    def visualize_automask(self, image, masks, output_path=None):
+    def visualize_automask(
+        self,
+        image: Union(str, np.ndarray),
+        masks: np.ndarray,
+        output_path: str=None
+    ) -> None:
         """
         Visualizes the segmentation mask on the image and saves the resulting visualization.
 
         Args:
-            image (str): The image or the path to the image to be segmented.
+            image Union(str, numpy.ndarray): The image or the path to the image to be segmented.
             mask (numpy.ndarray): The segmentation mask to be visualized.
             output_path (str): The path to save the resulting visualization.
         """
@@ -335,29 +321,31 @@ class SegMate:
             # Save the figure
             plt.savefig(output_path, bbox_inches='tight')
 
-    def get_bis_dataset(self, dataset):
+    def get_dataset(self, dataset: Dataset) -> torch.utils.data.DataLoader:
         """
         Prepare the data of the desired set.
 
         Args:
-            dataset (HuggingFace dataset): The set of the data to be prepared.
+            dataset (Dataset): The dataset to be prepared.
 
         Returns:
-            train_dataloader (torch.utils.data.DataLoader): The data loader of the desired set.
+            torch.utils.data.DataLoader: The data loader of the desired set.
         """
-        # creating the dataset
-        train_dataset = ds.BISDataset(dataset=dataset, preprocess=self.sam.preprocess,
-                                      img_size=self.sam.image_encoder.img_size, device=self.device)
 
         # creating the data loader
-        train_dataloader = torch.utils.data.DataLoader(
-            train_dataset, batch_size=1, shuffle=False)
+        return torch.utils.data.DataLoader(
+            dataset, batch_size=1, shuffle=False)
 
-        return train_dataloader
-
-    def forward_pass(self, image, bbox_prompt):
+    def forward_pass(self, image: np.ndarray, bbox_prompt: np.ndarray) -> np.ndarray:
         """
         Performs a forward pass on the image and the prompt.
+
+        Args:
+            image (numpy.ndarray): The image to be segmented.
+            bbox_prompt (numpy.ndarray): The bounding boxes prompt to be used for segmentation.
+
+        Returns:
+            binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
         """
         # preprocessing and transforming the image and bounding box prompt(s) with sam's functions
         input_image, bbox_prompt = self.preprocess_input(image, bbox_prompt)
@@ -376,15 +364,20 @@ class SegMate:
 
         return binary_mask
 
-    def fine_tune(self, train_data, lr=1e-5, num_epochs=10):
+    def fine_tune(self, train_data: Dataset, lr: float=1e-5, num_epochs: int=10) -> None:
         """
         Fine-tunes the SAM model using the provided training.
+
+        Args:
+            train_data (Dataset): The training data to be used for fine-tuning.
+            lr (float): The learning rate to be used for fine-tuning.
+            num_epochs (int): The number of epochs to be used for fine-tuning.
         """
         # setting the model to training mode
         self.sam.train()
 
         # creating the training and validation data loaders
-        train_loader = self.get_bis_dataset(train_data)
+        train_loader = self.get_dataset(train_data)
 
         # creating the optimizer and the loss function
         optimizer = torch.optim.Adam(self.sam.mask_decoder.parameters(), lr=lr)
