@@ -189,7 +189,7 @@ class SegMate:
         text_prompt: tuple([str, float, float]) = None,
         boxes_prompt: np.ndarray = None,
         points_prompt: tuple([np.ndarray, np.ndarray]) = None,
-        output_path: str = None
+#         output_path: str = None
     ) -> np.ndarray:
         """
         Performs image segmentation using the loaded image and input prompt.
@@ -213,7 +213,7 @@ class SegMate:
         if isinstance(image, str):
             image = utils.load_image(image)
         
-        image = self.predictor.set_image(image)
+        self.predictor.set_image(image)
 
         # converting the text prompt to a list of bounding boxes with a zero-shot object detection
         # model (Grounding Dino, etc.)
@@ -223,6 +223,7 @@ class SegMate:
                 image, text, box_threshold, text_threshold)
         if boxes_prompt is not None:
             boxes_prompt = torch.tensor(boxes_prompt).to(self.device)
+            boxes_prompt = self.predictor.transform.apply_boxes_torch(boxes_prompt, image.shape[:2])
         if points_prompt is not None:
             point_coords, point_labels = points_prompt
             point_coords = torch.tensor(point_coords).to(self.device)
@@ -236,13 +237,13 @@ class SegMate:
             point_labels=point_labels,
             boxes=boxes_prompt,
         )
-        binary_masks = masks.detach().cpu().numpy()
-#         .astype(np.uint8)
-        # saving the segmentation mask if the output path is provided
-        if output_path is not None:
-            self.save_mask(binary_masks, output_path)
+        masks = masks.detach().cpu().numpy().astype(np.uint8)
 
-        return binary_masks
+        # saving the segmentation mask if the output path is provided
+#         if output_path is not None:
+#             self.save_mask(binary_masks, output_path)
+
+        return masks
 
     def auto_segment(
         self,
