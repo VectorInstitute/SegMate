@@ -89,6 +89,7 @@ class GroundingDINO(ObjectDetector):
                                          device=self.device)
         width, height = image_pil.size
         # rescale boxes
-        boxes = box_ops.box_cxcywh_to_xyxy(boxes)
+        boxes = box_ops.box_cxcywh_to_xyxy(boxes) * torch.Tensor(
+            [height, width, height, width], device=self.device)
 
         return boxes, logits, phrases

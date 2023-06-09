@@ -212,7 +212,8 @@ class SegMate:
         # loading the image if the input is a path to an image
         if isinstance(image, str):
             image = utils.load_image(image)
-            image = self.predictor.set_image(image)
+        
+        image = self.predictor.set_image(image)
 
         # converting the text prompt to a list of bounding boxes with a zero-shot object detection
         # model (Grounding Dino, etc.)
@@ -220,20 +221,23 @@ class SegMate:
             text, box_threshold, text_threshold = text_prompt
             bbox_prompt, _, _ = self.object_detector.predict(
                 image, text, box_threshold, text_threshold)
-        # if boxes_prompt is not None:
-        #     bbox_prompt = torch.tensor(boxes_prompt).to(self.device)
+        if boxes_prompt is not None:
+            boxes_prompt = torch.tensor(boxes_prompt).to(self.device)
         if points_prompt is not None:
             point_coords, point_labels = points_prompt
             point_coords = torch.tensor(point_coords).to(self.device)
             point_labels = torch.tensor(point_labels).to(self.device)
+        else:
+            point_coords, point_labels = None, None
         
         # performing image segmentation with sam
-        masks, _, _ = self.sam.predict(
+        masks, _, _ = self.predictor.predict_torch(
             point_coords=point_coords,
             point_labels=point_labels,
-            boxes=bbox_prompt,
+            boxes=boxes_prompt,
         )
-        binary_masks = masks.sum(0).astype(np.uint8)
+        binary_masks = masks.detach().cpu().numpy()
+#         .astype(np.uint8)
         # saving the segmentation mask if the output path is provided
         if output_path is not None:
             self.save_mask(binary_masks, output_path)
