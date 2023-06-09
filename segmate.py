@@ -4,7 +4,7 @@ This file contains the SegMate class
 from statistics import mean
 from typing import Union
 
-from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 from segment_anything.utils.transforms import ResizeLongestSide
 from torch.nn import functional as F
 from torch.utils.data import Dataset
@@ -47,6 +47,8 @@ class SegMate:
         self.sam = sam_model_registry[self.model_type](
             checkpoint=self.checkpoint)
         self.sam.to(self.device)
+        
+        self.predictor = SamPredictor(self.sam)
 
     def add_object_detector(self, object_detector: ObjectDetector) -> None:
         """
@@ -69,7 +71,7 @@ class SegMate:
         self,
         image: np.ndarray,
         bbox_prompt: np.ndarray
-    ) -> tuple(torch.Tensor, torch.Tensor):
+    ) -> tuple([torch.Tensor, torch.Tensor]):
         """
         Transform and preprocesses the input image and bounding boxes to the required size and
         converts them to tensors.
@@ -100,7 +102,7 @@ class SegMate:
         self,
         input_image: torch.Tensor,
         bbox_prompt: torch.Tensor
-    ) -> tuple(torch.Tensor, torch.Tensor, torch.Tensor):
+    ) -> tuple([torch.Tensor, torch.Tensor, torch.Tensor]):
         """
         Encodes the input image and bounding boxes.
 
@@ -128,8 +130,8 @@ class SegMate:
     def postprocess_mask(
         self,
         low_res_masks: torch.Tensor,
-        transformed_input_size: tuple(int, int),
-        original_input_size: tuple(int, int)
+        transformed_input_size: tuple([int, int]),
+        original_input_size: tuple([int, int])
     ) -> np.ndarray:
         """
         Post-processes the segmentation mask to the original input size.
@@ -157,7 +159,7 @@ class SegMate:
         sparse_embeddings: torch.Tensor,
         dense_embeddings: torch.Tensor,
         multimask_output: bool = False
-    ) -> tuple(torch.Tensor, torch.Tensor):
+    ) -> tuple([torch.Tensor, torch.Tensor]):
         """
         Generates the segmentation mask.
 
@@ -183,10 +185,10 @@ class SegMate:
 
     def segment(
         self,
-        image: Union(str, np.ndarray),
-        text_prompt: tuple(str, float, float) = None,
+        image: Union[str, np.ndarray],
+        text_prompt: tuple([str, float, float]) = None,
         boxes_prompt: np.ndarray = None,
-        points_prompt: tuple(np.ndarray, np.ndarray) = None,
+        points_prompt: tuple([np.ndarray, np.ndarray]) = None,
         output_path: str = None
     ) -> np.ndarray:
         """
@@ -210,17 +212,17 @@ class SegMate:
         # loading the image if the input is a path to an image
         if isinstance(image, str):
             image = utils.load_image(image)
+            image = self.predictor.set_image(image)
 
         # converting the text prompt to a list of bounding boxes with a zero-shot object detection
         # model (Grounding Dino, etc.)
-        if text_prompt:
-            # To be implemented
+        if text_prompt is not None:
             text, box_threshold, text_threshold = text_prompt
             bbox_prompt, _, _ = self.object_detector.predict(
                 image, text, box_threshold, text_threshold)
-        if boxes_prompt:
+        if boxes_prompt is not None:
             bbox_prompt = torch.tensor(boxes_prompt).to(self.device)
-        if points_prompt:
+        if points_prompt is not None:
             point_coords, point_labels = points_prompt
             point_coords = torch.tensor(point_coords).to(self.device)
             point_labels = torch.tensor(point_labels).to(self.device)
@@ -240,7 +242,7 @@ class SegMate:
 
     def auto_segment(
         self,
-        image: Union(str, np.ndarray),
+        image: Union[str, np.ndarray],
         points_per_side: int=32,
         pred_iou_thresh: float=0.86,
         stability_score_thresh: float=0.92,
@@ -252,7 +254,7 @@ class SegMate:
         Performs image segmentation using the automatic mask generation method.
 
         Args:
-            image (str, numpy.ndarray): The image or the path to the image to be segmented.
+            image (Union[str, numpy.ndarray]): The image or the path to the image to be segmented.
             points_per_side (int): The number of points per side of the mask.
             pred_iou_thresh (float): The IOU threshold for the predicted mask.
             stability_score_thresh (float): The stability score threshold for the predicted mask.
@@ -285,7 +287,7 @@ class SegMate:
 
     def visualize_automask(
         self,
-        image: Union(str, np.ndarray),
+        image: Union[str, np.ndarray],
         masks: np.ndarray,
         output_path: str=None
     ) -> None:
@@ -293,7 +295,7 @@ class SegMate:
         Visualizes the segmentation mask on the image and saves the resulting visualization.
 
         Args:
-            image Union(str, numpy.ndarray): The image or the path to the image to be segmented.
+            image (Union[str, numpy.ndarray]): The image or the path to the image to be segmented.
             mask (numpy.ndarray): The segmentation mask to be visualized.
             output_path (str): The path to save the resulting visualization.
         """

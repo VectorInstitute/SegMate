@@ -52,7 +52,7 @@ def get_segmentation_mask(segmentation_label: list, size: int) -> np.ndarray:
     """
     # Convert COCO segmentation label to binary mask
     binary_mask = np.zeros((size, size, 1))
-    for seg_lbl in segmentation_label['segmentation']:
+    for seg_lbl in segmentation_label:
         rle = coco_mask.frPyObjects(seg_lbl, size, size)
         binary_mask += coco_mask.decode(rle)
     binary_mask = binary_mask.reshape((1, size, size)).astype('float32')
