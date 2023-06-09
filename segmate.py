@@ -47,7 +47,7 @@ class SegMate:
         self.sam = sam_model_registry[self.model_type](
             checkpoint=self.checkpoint)
         self.sam.to(self.device)
-        
+
         self.predictor = SamPredictor(self.sam)
 
     def add_object_detector(self, object_detector: ObjectDetector) -> None:
@@ -71,7 +71,7 @@ class SegMate:
         self,
         image: np.ndarray,
         bbox_prompt: np.ndarray
-    ) -> tuple([torch.Tensor, torch.Tensor]):
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Transform and preprocesses the input image and bounding boxes to the required size and
         converts them to tensors.
@@ -102,7 +102,7 @@ class SegMate:
         self,
         input_image: torch.Tensor,
         bbox_prompt: torch.Tensor
-    ) -> tuple([torch.Tensor, torch.Tensor, torch.Tensor]):
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Encodes the input image and bounding boxes.
 
@@ -130,16 +130,16 @@ class SegMate:
     def postprocess_mask(
         self,
         low_res_masks: torch.Tensor,
-        transformed_input_size: tuple([int, int]),
-        original_input_size: tuple([int, int])
+        transformed_input_size: tuple[int, int],
+        original_input_size: tuple[int, int]
     ) -> np.ndarray:
         """
         Post-processes the segmentation mask to the original input size.
 
         Args:
             low_res_masks (torch.Tensor): The generated segmentation mask.
-            transformed_input_size (tuple(int, int)): The size of the transformed input image.
-            original_input_size (tuple(int, int)): The size of the original input image.
+            transformed_input_size (tuple[int, int]): The size of the transformed input image.
+            original_input_size (tuple[int, int]): The size of the original input image.
 
         Returns:
             binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
@@ -159,7 +159,7 @@ class SegMate:
         sparse_embeddings: torch.Tensor,
         dense_embeddings: torch.Tensor,
         multimask_output: bool = False
-    ) -> tuple([torch.Tensor, torch.Tensor]):
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Generates the segmentation mask.
 
@@ -186,9 +186,9 @@ class SegMate:
     def segment(
         self,
         image: Union[str, np.ndarray],
-        text_prompt: tuple([str, float, float]) = None,
+        text_prompt: tuple[str, float, float] = None,
         boxes_prompt: np.ndarray = None,
-        points_prompt: tuple([np.ndarray, np.ndarray]) = None,
+        points_prompt: tuple[np.ndarray, np.ndarray] = (None, None),
 #         output_path: str = None
     ) -> np.ndarray:
         """
@@ -212,25 +212,27 @@ class SegMate:
         # loading the image if the input is a path to an image
         if isinstance(image, str):
             image = utils.load_image(image)
-        
+
         self.predictor.set_image(image)
 
         # converting the text prompt to a list of bounding boxes with a zero-shot object detection
         # model (Grounding Dino, etc.)
         if text_prompt is not None:
             text, box_threshold, text_threshold = text_prompt
-            bbox_prompt, _, _ = self.object_detector.predict(
+            boxes_prompt, _, _ = self.object_detector.predict(
                 image, text, box_threshold, text_threshold)
+            boxes_prompt = self.predictor.transform.apply_boxes_torch(boxes_prompt, image.shape[:2])
         if boxes_prompt is not None:
             boxes_prompt = torch.tensor(boxes_prompt).to(self.device)
             boxes_prompt = self.predictor.transform.apply_boxes_torch(boxes_prompt, image.shape[:2])
-        if points_prompt is not None:
-            point_coords, point_labels = points_prompt
+        point_coords, point_labels = points_prompt
+        if point_coords is not None and point_labels is not None:
+            # point_coords, point_labels = points_prompt
             point_coords = torch.tensor(point_coords).to(self.device)
             point_labels = torch.tensor(point_labels).to(self.device)
-        else:
-            point_coords, point_labels = None, None
-        
+        # else:
+            # point_coords, point_labels = None, None
+
         # performing image segmentation with sam
         masks, _, _ = self.predictor.predict_torch(
             point_coords=point_coords,

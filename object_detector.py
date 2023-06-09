@@ -66,7 +66,7 @@ class GroundingDINO(ObjectDetector):
             text_prompt: str,
             box_threshold: float,
             text_threshold: float
-        ) -> tuple([torch.Tensor, torch.Tensor, torch.Tensor]):
+        ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Run the GroundingDINO model prediction.
 

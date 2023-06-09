@@ -43,7 +43,7 @@ class BISDataset(Dataset):
         """
         return len(self.dataset)
 
-    def __getitem__(self, idx: int) -> tuple(torch.Tensor, torch.Tensor, torch.Tensor):
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns the item at the given index.
         Args:
