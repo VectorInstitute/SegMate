@@ -44,7 +44,7 @@ class GroundingDINO(ObjectDetector):
     def __init__(
             self,
             model_name:str="groundingdino",
-            device:str="cuda"
+            device:str="cpu"
         ) -> None:
         """
         Constructor for the GroundingDINO class.
