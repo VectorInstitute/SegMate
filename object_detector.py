@@ -44,7 +44,7 @@ class GroundingDINO(ObjectDetector):
     def __init__(
             self,
             model_name:str="groundingdino",
-            device:str="cpu"
+            device:str="cuda"
         ) -> None:
         """
         Constructor for the GroundingDINO class.
@@ -89,7 +89,7 @@ class GroundingDINO(ObjectDetector):
                                          device=self.device)
         width, height = image_pil.size
         # rescale boxes
-        boxes = box_ops.box_cxcywh_to_xyxy(boxes) * torch.Tensor(
-            [height, width, height, width], device=self.device)
+        boxes = box_ops.box_cxcywh_to_xyxy(boxes) * torch.tensor(
+            [height, width, height, width])
 
         return boxes, logits, phrases
