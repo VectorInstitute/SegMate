@@ -220,20 +220,20 @@ class SegMate:
             text, box_threshold, text_threshold = text_prompt
             bbox_prompt, _, _ = self.object_detector.predict(
                 image, text, box_threshold, text_threshold)
-        if boxes_prompt is not None:
-            bbox_prompt = torch.tensor(boxes_prompt).to(self.device)
+        # if boxes_prompt is not None:
+        #     bbox_prompt = torch.tensor(boxes_prompt).to(self.device)
         if points_prompt is not None:
             point_coords, point_labels = points_prompt
             point_coords = torch.tensor(point_coords).to(self.device)
             point_labels = torch.tensor(point_labels).to(self.device)
-
+        
         # performing image segmentation with sam
-        masks = self.sam.predict_torch(
+        masks, _, _ = self.sam.predict(
             point_coords=point_coords,
             point_labels=point_labels,
             boxes=bbox_prompt,
         )
-        binary_masks = masks.cpu().squeeze(1).numpy().astype(np.uint8)
+        binary_masks = masks.sum(0).astype(np.uint8)
         # saving the segmentation mask if the output path is provided
         if output_path is not None:
             self.save_mask(binary_masks, output_path)
