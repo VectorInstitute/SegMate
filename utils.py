@@ -203,25 +203,25 @@ def show_image(image: np.ndarray) -> None:
     plt.show()
 
 
-# def binarize_mask(
-#     masks: np.ndarray, 
-#     sum_all_masks: bool = True
-# ) -> np.ndarray:
-#     """
-#     Post-processes the segmentation mask to the original input size.
+def binarize_mask(
+    masks: np.ndarray, 
+    sum_all_masks: bool = True
+) -> np.ndarray:
+    """
+    Post-processes the segmentation mask to the original input size.
 
-#     Args:
-#         low_res_masks (torch.Tensor): The generated segmentation mask.
-#         transformed_input_size (tuple(int, int)): The size of the transformed input image.
-#         original_input_size (tuple(int, int)): The size of the original input image.
+    Args:
+        low_res_masks (torch.Tensor): The generated segmentation mask.
+        transformed_input_size (tuple(int, int)): The size of the transformed input image.
+        original_input_size (tuple(int, int)): The size of the original input image.
 
-#     Returns:
-#         binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
-#     """
-#     # post-processing the segmentation mask
-#     thresholded_mask = F.threshold(masks, 0.0, 0)
-#     binary_mask = F.normalize(thresholded_mask)
-#     if sum_all_masks:
-#         binary_mask = binary_mask.sum(axis=0)
+    Returns:
+        binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
+    """
+    # post-processing the segmentation mask
+    thresholded_mask = F.threshold(masks, 0.0, 0)
+    binary_mask = F.normalize(thresholded_mask)
+    if sum_all_masks:
+        binary_mask = binary_mask.sum(axis=0)
 
-#     return binary_mask
+    return binary_mask
