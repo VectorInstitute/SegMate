@@ -211,17 +211,17 @@ def binarize_mask(
     Post-processes the segmentation mask to the original input size.
 
     Args:
-        low_res_masks (torch.Tensor): The generated segmentation mask.
-        transformed_input_size (tuple(int, int)): The size of the transformed input image.
-        original_input_size (tuple(int, int)): The size of the original input image.
+        masks (np.ndarray): The generated segmentation mask.
+        sum_all_masks (bool): Whether to sum all the masks or not.
 
     Returns:
-        binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
+        binary_mask (np.ndarray): The binarized segmentation mask of the image.
     """
     # post-processing the segmentation mask
-    thresholded_mask = F.threshold(masks, 0.0, 0)
-    binary_mask = F.normalize(thresholded_mask)
+    thresholded_mask = np.where(masks > 0.0, masks, 0)
+    binary_mask = thresholded_mask / np.linalg.norm(thresholded_mask)
+    
     if sum_all_masks:
-        binary_mask = binary_mask.sum(axis=0)
+        binary_mask = np.sum(binary_mask, axis=0)
 
     return binary_mask
