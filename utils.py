@@ -211,7 +211,7 @@ def binarize_mask(
     Post-processes the segmentation mask to the original input size.
 
     Args:
-        masks (np.ndarray): The generated segmentation mask.
+        masks (np.ndarray): The generated segmentation masks.
         sum_all_masks (bool): Whether to sum all the masks or not.
 
     Returns:
@@ -219,6 +219,7 @@ def binarize_mask(
     """
     # post-processing the segmentation mask
     masks = masks.sum(axis=1)
+    print(masks.shape)
     thresholded_mask = np.where(masks > 0.0, 1, 0)
     binary_mask = thresholded_mask.astype(np.float32)
     
