@@ -218,6 +218,7 @@ def binarize_mask(
         binary_mask (np.ndarray): The binarized segmentation mask of the image.
     """
     # post-processing the segmentation mask
+    masks = masks.sum(axis=1)
     thresholded_mask = np.where(masks > 0.0, 1, 0)
     binary_mask = thresholded_mask.astype(np.float32)
     
