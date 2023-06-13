@@ -190,7 +190,7 @@ def load_image(image_path: str) -> np.ndarray:
     return image
 
 
-def show_image(image: np.ndarray) -> None:
+def show_image(image: np.ndarray, color_map='binary_r') -> None:
     """
     Shows the image.
 
@@ -198,7 +198,7 @@ def show_image(image: np.ndarray) -> None:
         image (numpy.ndarray): The image to be shown.
     """
     # showing the image
-    plt.imshow(image)
+    plt.imshow(image, cmap=color_map)
     plt.axis('off')
     plt.show()
 
