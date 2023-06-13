@@ -224,5 +224,23 @@ def binarize_mask(
     
     if sum_all_masks:
         binary_mask = np.sum(binary_mask, axis=0)
+        binary_mask = np.where(binary_mask > 1, 1, binary_mask)
 
     return binary_mask
+
+def convert_bboxes2center_points(bboxes: np.ndarray) -> np.ndarray:
+    """
+    Converts the bounding boxes to center points.
+
+    Args:
+        bboxes (np.ndarray): The bounding boxes of the image.
+
+    Returns:
+        center_points (np.ndarray): The center points of the bounding boxes.
+    """
+    # converting the bounding boxes to center points
+    center_points = np.zeros((bboxes.shape[0], 2))
+    center_points[:, 0] = (bboxes[:, 0] + bboxes[:, 2]) / 2
+    center_points[:, 1] = (bboxes[:, 1] + bboxes[:, 3]) / 2
+
+    return center_points

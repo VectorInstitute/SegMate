@@ -228,8 +228,9 @@ class SegMate:
         point_coords, point_labels = points_prompt
         if point_coords is not None and point_labels is not None:
             # point_coords, point_labels = points_prompt
-            point_coords = torch.tensor(point_coords).to(self.device)
-            point_labels = torch.tensor(point_labels).to(self.device)
+            point_coords = torch.tensor(point_coords).to(self.device).unsqueeze(1)
+            point_labels = torch.tensor(point_labels).to(self.device).unsqueeze(1)
+            point_coords = self.predictor.transform.apply_coords_torch(point_coords, image.shape[:2])
         # else:
             # point_coords, point_labels = None, None
 
