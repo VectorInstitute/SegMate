@@ -346,7 +346,7 @@ class SegMate:
         return torch.utils.data.DataLoader(
             dataset, batch_size=1, shuffle=False)
 
-    def forward_pass(self, image: np.ndarray, bbox_prompt: np.ndarray) -> np.ndarray:
+    def forward_pass(self, input_image: np.ndarray, bbox_prompt: np.ndarray, original_input_size: int) -> np.ndarray:
         """
         Performs a forward pass on the image and the prompt.
 
@@ -358,7 +358,7 @@ class SegMate:
             binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
         """
         # preprocessing and transforming the image and bounding box prompt(s) with sam's functions
-        input_image, bbox_prompt = self.preprocess_input(image, bbox_prompt)
+        # input_image, bbox_prompt = self.preprocess_input(image, bbox_prompt)
 
         # encoding the image and the prompt with sam's encoders
         image_embedding, sparse_embeddings, dense_embeddings = self.encode_input(
@@ -370,11 +370,11 @@ class SegMate:
 
         # postprocessing the segmentation mask and converting it to a numpy array
         binary_mask = self.postprocess_mask(low_res_masks, transformed_input_size=tuple(
-            input_image.shape[-2:]), original_input_size=image.shape[:2])
+            input_image.shape[-2:]), original_input_size=original_input_size)
 
         return binary_mask
 
-    def fine_tune(self, train_data: Dataset, lr: float=1e-5, num_epochs: int=10) -> None:
+    def fine_tune(self, train_data: Dataset, original_input_size= int, lr: float=1e-5, num_epochs: int=10) -> None:
         """
         Fine-tunes the SAM model using the provided training.
 
@@ -401,7 +401,7 @@ class SegMate:
                     continue
 
                 # forward pass
-                pred_mask = self.forward_pass(input_image, box_prompt)
+                pred_mask = self.forward_pass(input_image, box_prompt.squeeze(), original_input_size=original_input_size)
 
                 # compute loss
                 loss = criterion(pred_mask, gt_mask)
