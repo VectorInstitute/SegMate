@@ -35,7 +35,67 @@ The mask decoder takes the encoded information from both the image encoder and t
 - API for zero-shot image segmentation with Grounding Dino using text prompts
 - API for finetuning SAM on custom datasets
 
+## Installation
+
+Start by installing the required dependencies. You can use `pip` to install the necessary packages:
+
+```shell
+pip install segmate
+```
+
 ## Usage
+
+To use the provided code snippets, follow the steps below:
+
+1. Import the required modules and initialize the necessary objects:
+
+```python
+from segmate import SegMate
+from object_detector import GroundingDINO
+import utils
+
+od = GroundingDINO()
+sm = SegMate(model_type='MODEL_TYPE', checkpoint='PATH_to_MODEL', device='cuda', object_detector=od)
+```
+
+2. Perform segmentation with a bounding box prompt:
+
+```python
+masks = sm.segment(image=input_image, boxes_prompt=bbox)
+mask = utils.binarize_mask(masks, sum_all_masks=True)
+utils.show_image(mask)
+```
+
+3. Perform segmentation with a bounding text prompt:
+
+```python
+masks = sm.segment(image=input_image, text_prompt=["building", 0.30, 0.25])
+mask = utils.binarize_mask(masks, sum_all_masks=True)
+utils.show_image(mask)
+```
+
+4. Perform segmentation with a bounding point prompt:
+
+```python
+masks = sm.segment(image=input_image, points_prompt=[point_coords, point_labels])
+mask = utils.binarize_mask(masks, sum_all_masks=True)
+utils.show_image(mask)
+```
+
+5. Generate masks automatically without prompts:
+
+```python
+masks = sm.auto_segment(image=input_image)
+sm.visualize_automask(image=input_image, masks=masks)
+```
+
+6. Fine-tune the SAM model on a custom dataset:
+
+```python
+sm.fine_tune(train_data=train_dataset, lr=1e-5, num_epochs=1, original_input_size=500)
+```
+
+## Reference
 
 To get started, follow the installation instructions in the [Installation]() guide. Once you have the toolkit set up, you can refer to the [API Documentation]() for detailed usage instructions and examples.
 
