@@ -121,7 +121,7 @@ class SegMate:
         # encoding the prompt with sam's prompt encoder
         sparse_embeddings, dense_embeddings = self.sam.prompt_encoder(
             points=None,
-            boxes=bbox_prompt,
+            boxes=bbox_prompt.squeeze(0),
             masks=None,
         )
 
@@ -149,7 +149,7 @@ class SegMate:
             low_res_masks, transformed_input_size, original_input_size)
         thresholded_mask = F.threshold(upscaled_masks, 0.0, 0)
         binary_mask = F.normalize(thresholded_mask)
-        binary_mask = binary_mask.sum(axis=0).cpu().numpy()
+        binary_mask = binary_mask.sum(axis=0).unsqueeze(0)
 
         return binary_mask
 
@@ -365,8 +365,7 @@ class SegMate:
             input_image, bbox_prompt)
 
         # generating the segmentation mask from the image and the prompt embeddings
-        low_res_masks, _ = self.generate_mask(
-            self, image_embedding, sparse_embeddings, dense_embeddings)
+        low_res_masks, _ = self.generate_mask(image_embedding, sparse_embeddings, dense_embeddings)
 
         # postprocessing the segmentation mask and converting it to a numpy array
         binary_mask = self.postprocess_mask(low_res_masks, transformed_input_size=tuple(
@@ -401,7 +400,7 @@ class SegMate:
                     continue
 
                 # forward pass
-                pred_mask = self.forward_pass(input_image, box_prompt.squeeze(), original_input_size=original_input_size)
+                pred_mask = self.forward_pass(input_image, box_prompt, original_input_size=original_input_size)
 
                 # compute loss
                 loss = criterion(pred_mask, gt_mask)

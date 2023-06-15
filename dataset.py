@@ -62,7 +62,7 @@ class BISDataset(Dataset):
         input_image = input_image.permute(2, 0, 1).contiguous()[None, :, :, :]
 
         # preprocess the image
-        input_image = self.preprocess(input_image).squeeze(0)
+        input_image = self.preprocess(input_image).squeeze()
 
         # prepare the prompt for the model
         box_prompt = np.array(item['objects']['bbox']).astype('float32')
@@ -72,6 +72,7 @@ class BISDataset(Dataset):
 
         # get the ground truth segmentation mask
         gt_mask = utils.get_segmentation_mask(item["objects"]['segmentation'], mask_size)
+        gt_mask = gt_mask.reshape((1, mask_size, mask_size)).astype('float32')
         gt_mask = torch.as_tensor(gt_mask, device=self.device)
 
         return input_image, box_prompt, gt_mask
