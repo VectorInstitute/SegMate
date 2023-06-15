@@ -58,7 +58,7 @@ od = GroundingDINO()
 sm = SegMate(model_type='MODEL_TYPE', checkpoint='PATH_to_MODEL', device='cuda', object_detector=od)
 ```
 
-2. Perform segmentation with a bounding box prompt:
+2. Perform segmentation with a bounding box prompts:
 
 ```python
 masks = sm.segment(image=input_image, boxes_prompt=bbox)
@@ -66,7 +66,7 @@ mask = utils.binarize_mask(masks, sum_all_masks=True)
 utils.show_image(mask)
 ```
 
-3. Perform segmentation with a bounding text prompt:
+3. Perform segmentation with a text prompt:
 
 ```python
 masks = sm.segment(image=input_image, text_prompt=["building", 0.30, 0.25])
@@ -74,7 +74,7 @@ mask = utils.binarize_mask(masks, sum_all_masks=True)
 utils.show_image(mask)
 ```
 
-4. Perform segmentation with a bounding point prompt:
+4. Perform segmentation with point prompts:
 
 ```python
 masks = sm.segment(image=input_image, points_prompt=[point_coords, point_labels])
