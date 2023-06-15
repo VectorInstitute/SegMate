@@ -2,7 +2,7 @@
 
 SegMate: A Segment Anything Model Toolkit
 
-## Description of SAM
+## SAM Description
 
 This repository is a toolkit for using the Segment Anything Model (SAM) developed by Meta AI. It is capable of accurately "cutting out" any object from an image with just a single click.
 
@@ -12,7 +12,7 @@ The design of SAM is highly flexible and enables seamless integration with other
 
 SAM was trained on over 1.1 billion segmentation masks collected from approximately 11 million licensed and privacy-preserving images. The dataset was built using SAM's ambiguity-aware design and a grid of points, allowing it to automatically annotate new images.
 
-## Architecture of SAM
+## SAM Architecture
 
 SAM utilizes a sophisticated architecture that enables efficient and accurate object segmentation. The model is designed with a three-step process involving an image encoder, a prompt encoder, and a mask decoder.
 
@@ -28,7 +28,7 @@ The prompt encoder plays a crucial role in SAM's promptable design. It processes
 
 The mask decoder takes the encoded information from both the image encoder and the prompt encoder to generate precise segmentation masks. It leverages a lightweight network that efficiently processes the encoded features and produces detailed object boundaries. The mask decoder's computational efficiency enables it to run seamlessly in a web browser, allowing for near real-time segmentation results.
 
-## Features of SegMate
+## SegMate Features
 
 - API for easy inference with SAM, supporting bounding box, points, and text prompts
 - Automatic masking without the need for prompts
