@@ -2,17 +2,24 @@
 
 SegMate: A Segment Anything Model Toolkit
 
-## SAM Description
+## Description 
 
 This repository is a toolkit for using the Segment Anything Model (SAM) developed by Meta AI. It is capable of accurately "cutting out" any object from an image with just a single click.
 
-SAM is a promptable segmentation system that exhibits zero-shot generalization to unfamiliar objects and images, eliminating the need for additional training. By providing prompts that specify what needs to be segmented in an image, SAM can perform a wide range of segmentation tasks without requiring additional training.
+SAM is a promptable segmentation system that exhibits zero-shot generalization to unfamiliar objects and images, eliminating the need for additional training. By providing prompts that specify what needs to be segmented in an image, SAM can perform a wide range of segmentation tasks without requiring additional training. 
+
+## Features
+
+- API for easy inference with SAM, supporting bounding box, points, and text prompts
+- Automatic masking without the need for prompts
+- API for zero-shot image segmentation with Grounding Dino using text prompts
+- API for finetuning SAM on custom datasets
+
+## SAM Architecture
 
 The design of SAM is highly flexible and enables seamless integration with other systems. It has been trained on millions of images and masks using a model-in-the-loop "data engine" approach. Researchers iteratively annotated images and updated the model, resulting in SAM's advanced capabilities and understanding of objects.
 
 SAM was trained on over 1.1 billion segmentation masks collected from approximately 11 million licensed and privacy-preserving images. The dataset was built using SAM's ambiguity-aware design and a grid of points, allowing it to automatically annotate new images.
-
-## SAM Architecture
 
 SAM utilizes a sophisticated architecture that enables efficient and accurate object segmentation. The model is designed with a three-step process involving an image encoder, a prompt encoder, and a mask decoder.
 
@@ -27,13 +34,6 @@ The prompt encoder plays a crucial role in SAM's promptable design. It processes
 ### Mask Decoder
 
 The mask decoder takes the encoded information from both the image encoder and the prompt encoder to generate precise segmentation masks. It leverages a lightweight network that efficiently processes the encoded features and produces detailed object boundaries. The mask decoder's computational efficiency enables it to run seamlessly in a web browser, allowing for near real-time segmentation results.
-
-## SegMate Features
-
-- API for easy inference with SAM, supporting bounding box, points, and text prompts
-- Automatic masking without the need for prompts
-- API for zero-shot image segmentation with Grounding Dino using text prompts
-- API for finetuning SAM on custom datasets
 
 ## Installation
 
