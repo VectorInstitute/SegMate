@@ -189,6 +189,7 @@ class SegMate:
         text_prompt: tuple[str, float, float] = None,
         boxes_prompt: np.ndarray = None,
         points_prompt: tuple[np.ndarray, np.ndarray] = (None, None),
+        mask_input: np.ndarray = None,
 #         output_path: str = None
     ) -> np.ndarray:
         """
@@ -231,14 +232,16 @@ class SegMate:
             point_coords = torch.tensor(point_coords).to(self.device).unsqueeze(1)
             point_labels = torch.tensor(point_labels).to(self.device).unsqueeze(1)
             point_coords = self.predictor.transform.apply_coords_torch(point_coords, image.shape[:2])
-        # else:
-            # point_coords, point_labels = None, None
+        if mask_input is not None:
+            mask_input = torch.tensor(mask_input).to(self.device)
+            mask_input = mask_input[None, :, :, :]
 
         # performing image segmentation with sam
         masks, _, _ = self.predictor.predict_torch(
             point_coords=point_coords,
             point_labels=point_labels,
             boxes=boxes_prompt,
+            mask_input=mask_input,
         )
         masks = masks.detach().cpu().numpy().astype(np.uint8)
 
