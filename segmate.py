@@ -222,7 +222,6 @@ class SegMate:
             text, box_threshold, text_threshold = text_prompt
             boxes_prompt, _, _ = self.object_detector.predict(
                 image, text, box_threshold, text_threshold)
-            boxes_prompt = utils.convert_bboxes2center_points(boxes_prompt)
             boxes_prompt = self.predictor.transform.apply_boxes_torch(
                 boxes_prompt, image.shape[:2])
         if boxes_prompt is not None:
@@ -389,8 +388,8 @@ class SegMate:
             original_input_size: int,
             criterion: torch.nn,
             optimizer: torch.optim,
-            lr: float=1e-5,
-            num_epochs: int=10
+            lr: float = 1e-5,
+            num_epochs: int = 10
         ) -> None:
         """
         Fine-tunes the SAM model using the provided training.

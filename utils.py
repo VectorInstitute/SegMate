@@ -61,7 +61,7 @@ def get_segmentation_mask(segmentation_label: list, size: int) -> np.ndarray:
     return binary_mask
 
 
-def convert_bboxes(bboxes: list) -> np.ndarray:
+def convert_coco_to_sam(bboxes: list) -> np.ndarray:
     """
     Converts a list of bounding boxes from [x_min, y_min, width, height] format to
     [x_min, y_min, x_max, y_max] format.
@@ -82,6 +82,27 @@ def convert_bboxes(bboxes: list) -> np.ndarray:
         x_max = x_min + width
         y_max = y_min + height
         converted_bboxes.append([x_min, y_min, x_max, y_max])
+    return np.array(converted_bboxes)
+
+
+def convert_sam_to_coco(bboxes: np.ndarray) -> np.ndarray:
+    """
+    Converts a list of bounding boxes from SAM input format to COCO format.
+
+    Args:
+        bboxes (np.ndarray): A list of bounding boxes, where each bounding box is represented as
+        [x_min, y_min, x_max, y_max].
+
+    Returns:
+        np.ndarray: A list of converted bounding boxes, where each bounding box is represented as
+        [x_min, y_min, width, height].
+    """
+    converted_bboxes = []
+    for bbox in bboxes:
+        x_min, y_min, x_max, y_max = bbox
+        width = x_max - x_min
+        height = y_max - y_min
+        converted_bboxes.append([x_min, y_min, width, height])
     return np.array(converted_bboxes)
 
 
