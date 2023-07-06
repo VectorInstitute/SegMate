@@ -222,6 +222,7 @@ class SegMate:
             text, box_threshold, text_threshold = text_prompt
             boxes_prompt, _, _ = self.object_detector.predict(
                 image, text, box_threshold, text_threshold)
+            print(boxes_prompt)
             boxes_prompt = self.predictor.transform.apply_boxes_torch(
                 boxes_prompt, image.shape[:2])
         if boxes_prompt is not None:
