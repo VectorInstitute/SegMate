@@ -373,7 +373,7 @@ class SegMate:
 
         return binary_mask
 
-    def fine_tune(self, train_data: Dataset, original_input_size= int, lr: float=1e-5, num_epochs: int=10) -> None:
+    def fine_tune(self, train_data: Dataset, original_input_size: int, criterion: torch.loss,optimizer: torch.optim, lr: float=1e-5, num_epochs: int=10) -> None:
         """
         Fine-tunes the SAM model using the provided training.
 
@@ -389,9 +389,7 @@ class SegMate:
         train_loader = self.get_dataset(train_data)
 
         # creating the optimizer and the loss function
-        optimizer = torch.optim.Adam(self.sam.mask_decoder.parameters(), lr=lr)
-        criterion = monai.losses.DiceCELoss(
-            sigmoid=True, squared_pred=True, reduction='mean')
+        opt = optimizer(self.sam.mask_decoder.parameters(), lr=lr)
 
         for epoch in range(num_epochs):
             epoch_losses = []
@@ -406,11 +404,11 @@ class SegMate:
                 loss = criterion(pred_mask, gt_mask)
 
                 # backward pass (compute gradients of parameters w.r.t. loss)
-                optimizer.zero_grad()
+                opt.zero_grad()
                 loss.backward()
 
                 # optimize
-                optimizer.step()
+                opt.step()
                 epoch_losses.append(loss.item())
 
             print(f'EPOCH: {epoch}')
