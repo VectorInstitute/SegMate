@@ -189,6 +189,7 @@ class SegMate:
         text_prompt: tuple[str, float, float] = None,
         boxes_prompt: np.ndarray = None,
         points_prompt: tuple[np.ndarray, np.ndarray] = (None, None),
+        mask_input: np.ndarray = None,
 #         output_path: str = None
     ) -> np.ndarray:
         """
@@ -231,14 +232,16 @@ class SegMate:
             point_coords = torch.tensor(point_coords).to(self.device).unsqueeze(1)
             point_labels = torch.tensor(point_labels).to(self.device).unsqueeze(1)
             point_coords = self.predictor.transform.apply_coords_torch(point_coords, image.shape[:2])
-        # else:
-            # point_coords, point_labels = None, None
+        if mask_input is not None:
+            mask_input = torch.tensor(mask_input).to(self.device)
+            mask_input = mask_input[None, :, :, :]
 
         # performing image segmentation with sam
         masks, _, _ = self.predictor.predict_torch(
             point_coords=point_coords,
             point_labels=point_labels,
             boxes=boxes_prompt,
+            mask_input=mask_input,
         )
         masks = masks.detach().cpu().numpy().astype(np.uint8)
 
@@ -373,7 +376,7 @@ class SegMate:
 
         return binary_mask
 
-    def fine_tune(self, train_data: Dataset, original_input_size= int, lr: float=1e-5, num_epochs: int=10) -> None:
+    def fine_tune(self, train_data: Dataset, original_input_size: int, criterion: torch.loss,optimizer: torch.optim, lr: float=1e-5, num_epochs: int=10) -> None:
         """
         Fine-tunes the SAM model using the provided training.
 
@@ -389,9 +392,7 @@ class SegMate:
         train_loader = self.get_dataset(train_data)
 
         # creating the optimizer and the loss function
-        optimizer = torch.optim.Adam(self.sam.mask_decoder.parameters(), lr=lr)
-        criterion = monai.losses.DiceCELoss(
-            sigmoid=True, squared_pred=True, reduction='mean')
+        opt = optimizer(self.sam.mask_decoder.parameters(), lr=lr)
 
         for epoch in range(num_epochs):
             epoch_losses = []
@@ -406,11 +407,11 @@ class SegMate:
                 loss = criterion(pred_mask, gt_mask)
 
                 # backward pass (compute gradients of parameters w.r.t. loss)
-                optimizer.zero_grad()
+                opt.zero_grad()
                 loss.backward()
 
                 # optimize
-                optimizer.step()
+                opt.step()
                 epoch_losses.append(loss.item())
 
             print(f'EPOCH: {epoch}')
