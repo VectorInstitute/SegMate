@@ -218,15 +218,12 @@ class SegMate:
 
         # converting the text prompt to a list of bounding boxes with a zero-shot object detection
         # model (Grounding Dino, etc.)
-        if boxes_prompt is not None:
-            boxes_prompt = torch.tensor(boxes_prompt).to(self.device)
-            boxes_prompt = self.predictor.transform.apply_boxes_torch(
-                boxes_prompt, image.shape[:2])
         if text_prompt is not None:
             text, box_threshold, text_threshold = text_prompt
             boxes_prompt, _, _ = self.object_detector.predict(
                 image, text, box_threshold, text_threshold)
-            print(boxes_prompt)
+        if boxes_prompt is not None:
+            boxes_prompt = torch.tensor(boxes_prompt).to(self.device)
             boxes_prompt = self.predictor.transform.apply_boxes_torch(
                 boxes_prompt, image.shape[:2])
         point_coords, point_labels = points_prompt
