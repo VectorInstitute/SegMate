@@ -224,6 +224,48 @@ def show_image(image: np.ndarray, color_map='binary_r') -> None:
     plt.show()
 
 
+def show_masks(image: np.ndarray, masks: np.ndarray) -> None:
+    """
+    Shows the masks.
+
+    Args:
+        image (numpy.ndarray): The image to be shown.
+        masks (numpy.ndarray): The masks to be shown.
+    """
+    image_pil = Image.fromarray(image)
+    # Adjusted for single channel
+    mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)  
+
+    for i, mask in enumerate(masks):
+        mask = mask[0, :, :]
+        # Assign a unique value for each mask
+        mask_overlay += ((mask > 0) * (i + 1)).astype(np.uint8)  
+
+    # Normalize mask_overlay to be in [0, 255]
+    mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
+
+    plt.imshow(image_pil)
+    plt.imshow(mask_overlay, cmap='viridis', alpha=0.4)  # Overlay the mask with some transparency
+    plt.axis('off')
+    plt.show()
+
+
+def show_points(image: np.ndarray, point_coords: list, point_labels: list) -> None:
+    """
+    Shows the points.
+
+    Args:
+        image (numpy.ndarray): The image to be shown.
+        point_coords (list): The coordinates of the points.
+        point_labels (list): The labels of the points.
+    """
+    for pt, lbl in zip(point_coords, point_labels):
+        style = "bo" if lbl == 1 else "ro"
+        plt.plot(pt[0], pt[1], style)
+
+    plt.imshow(Image.fromarray(image))
+
+
 def binarize_mask(
     masks: np.ndarray, 
     sum_all_masks: bool = True
