@@ -190,7 +190,7 @@ class SegMate:
         boxes_prompt: np.ndarray = None,
         points_prompt: tuple[np.ndarray, np.ndarray] = (None, None),
         mask_input: np.ndarray = None,
-#         output_path: str = None
+        #         output_path: str = None
     ) -> np.ndarray:
         """
         Performs image segmentation using the loaded image and input prompt.
@@ -222,16 +222,21 @@ class SegMate:
             text, box_threshold, text_threshold = text_prompt
             boxes_prompt, _, _ = self.object_detector.predict(
                 image, text, box_threshold, text_threshold)
-            boxes_prompt = self.predictor.transform.apply_boxes_torch(boxes_prompt, image.shape[:2])
+            boxes_prompt = self.predictor.transform.apply_boxes_torch(
+                boxes_prompt, image.shape[:2])
         if boxes_prompt is not None:
             boxes_prompt = torch.tensor(boxes_prompt).to(self.device)
-            boxes_prompt = self.predictor.transform.apply_boxes_torch(boxes_prompt, image.shape[:2])
+            boxes_prompt = self.predictor.transform.apply_boxes_torch(
+                boxes_prompt, image.shape[:2])
         point_coords, point_labels = points_prompt
         if point_coords is not None and point_labels is not None:
             # point_coords, point_labels = points_prompt
-            point_coords = torch.tensor(point_coords).to(self.device).unsqueeze(1)
-            point_labels = torch.tensor(point_labels).to(self.device).unsqueeze(1)
-            point_coords = self.predictor.transform.apply_coords_torch(point_coords, image.shape[:2])
+            point_coords = torch.tensor(point_coords).to(
+                self.device).unsqueeze(1)
+            point_labels = torch.tensor(point_labels).to(
+                self.device).unsqueeze(1)
+            point_coords = self.predictor.transform.apply_coords_torch(
+                point_coords, image.shape[:2])
         if mask_input is not None:
             mask_input = torch.tensor(mask_input).to(self.device)
             mask_input = mask_input[None, :, :, :]
@@ -254,12 +259,12 @@ class SegMate:
     def auto_segment(
         self,
         image: Union[str, np.ndarray],
-        points_per_side: int=32,
-        pred_iou_thresh: float=0.86,
-        stability_score_thresh: float=0.92,
-        crop_n_layers: int=1,
-        crop_n_points_downscale_factor: int=2,
-        min_mask_region_area: int=100
+        points_per_side: int = 32,
+        pred_iou_thresh: float = 0.86,
+        stability_score_thresh: float = 0.92,
+        crop_n_layers: int = 1,
+        crop_n_points_downscale_factor: int = 2,
+        min_mask_region_area: int = 100
     ) -> np.ndarray:
         """
         Performs image segmentation using the automatic mask generation method.
@@ -300,7 +305,7 @@ class SegMate:
         self,
         image: Union[str, np.ndarray],
         masks: np.ndarray,
-        output_path: str=None
+        output_path: str = None
     ) -> None:
         """
         Visualizes the segmentation mask on the image and saves the resulting visualization.
@@ -368,7 +373,8 @@ class SegMate:
             input_image, bbox_prompt)
 
         # generating the segmentation mask from the image and the prompt embeddings
-        low_res_masks, _ = self.generate_mask(image_embedding, sparse_embeddings, dense_embeddings)
+        low_res_masks, _ = self.generate_mask(
+            image_embedding, sparse_embeddings, dense_embeddings)
 
         # postprocessing the segmentation mask and converting it to a numpy array
         binary_mask = self.postprocess_mask(low_res_masks, transformed_input_size=tuple(
@@ -376,7 +382,15 @@ class SegMate:
 
         return binary_mask
 
-    def fine_tune(self, train_data: Dataset, original_input_size: int, criterion: torch.loss,optimizer: torch.optim, lr: float=1e-5, num_epochs: int=10) -> None:
+    def fine_tune(
+            self,
+            train_data: Dataset,
+            original_input_size: int,
+            criterion: torch.nn,
+            optimizer: torch.optim,
+            lr: float=1e-5,
+            num_epochs: int=10
+        ) -> None:
         """
         Fine-tunes the SAM model using the provided training.
 
@@ -401,7 +415,8 @@ class SegMate:
                     continue
 
                 # forward pass
-                pred_mask = self.forward_pass(input_image, box_prompt, original_input_size=original_input_size)
+                pred_mask = self.forward_pass(
+                    input_image, box_prompt, original_input_size=original_input_size)
 
                 # compute loss
                 loss = criterion(pred_mask, gt_mask)
