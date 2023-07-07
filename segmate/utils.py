@@ -211,16 +211,19 @@ def load_image(image_path: str) -> np.ndarray:
     return image
 
 
-def show_image(image: np.ndarray, color_map='binary_r') -> None:
+def show_image(image: np.ndarray, color_map: str='binary_r', show_axis: bool=False) -> None:
     """
     Shows the image.
 
     Args:
         image (numpy.ndarray): The image to be shown.
+        color_map (str): The color map to be used.
+        show_axis (bool): Whether to show the axis or not.
     """
     # showing the image
     plt.imshow(image, cmap=color_map)
-    plt.axis('off')
+    if not show_axis:
+        plt.axis('off')
     plt.show()
 
 
