@@ -33,10 +33,11 @@ class SegMate:
         """
         Initializes the SamKit object with the provided model path.
 
-        Args:
-            model_type (str): The type of SAM: (vit_b, vit_l, vit_h) -> b: base, l: large, h: huge.
-            checkpoint (str): The path to the pre-trained SAM.
-            device (str):  The device to load the model on (default: cuda).
+        :param model_type: The type of SAM: (vit_b, vit_l, vit_h) -> b: base, l: large, h: huge.
+        :param checkpoint: The path to the pre-trained SAM.
+        :param device:  The device to load the model on (default: cuda).
+
+        :return: None
         """
         self.model_type = model_type
         self.checkpoint = checkpoint
@@ -59,9 +60,10 @@ class SegMate:
         """
         Saves the resulting segmentation mask to the specified output path.
 
-        Args:
-            binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
-            output_path (str): The path to save the segmentation map.
+        :param binary_mask: The binarized segmentation mask of the image.
+        :param output_path: The path to save the segmentation map.
+
+        :return: None
         """
         # saving the segmentation mask
         cv2.imwrite(output_path, binary_mask)
@@ -75,13 +77,11 @@ class SegMate:
         Transform and preprocesses the input image and bounding boxes to the required size and
         converts them to tensors.
 
-        Args:
-            image (numpy.ndarray): The image to be transformed.
-            bbox_prompt (numpy.ndarray): The bounding boxes to be transformed.
+        :param image: The image to be transformed.
+        :param bbox_prompt: The bounding boxes to be transformed.
 
-        Returns:
-            image (torch.Tensor): The transformed image.
-            bbox_prompt (torch.Tensor): The transformed bounding boxes.
+        :return image: The transformed image.
+        :return bbox_prompt: The transformed bounding boxes.
         """
         # transforming the image to the required size and preprocess it
         transform = ResizeLongestSide(self.sam.image_encoder.img_size)
@@ -105,14 +105,12 @@ class SegMate:
         """
         Encodes the input image and bounding boxes.
 
-        Args:
-            image (torch.Tensor): The transformed image.
-            bbox_prompt (torch.Tensor): The transformed bounding boxes.
+        :param image: The transformed image.
+        :param bbox_prompt: The transformed bounding boxes.
 
-        Returns:
-            image_embedding (torch.Tensor): The encoded image.
-            sparse_embeddings (torch.Tensor): The encoded sparse bounding boxes.
-            dense_embeddings (torch.Tensor): The encoded dense bounding boxes.
+        :return image_embedding: The encoded image.
+        :return sparse_embeddings: The encoded sparse bounding boxes.
+        :return dense_embeddings: The encoded dense bounding boxes.
         """
         # encoding the image with sam's image encoder
         image_embedding = self.sam.image_encoder(input_image)
@@ -135,13 +133,11 @@ class SegMate:
         """
         Post-processes the segmentation mask to the original input size.
 
-        Args:
-            low_res_masks (torch.Tensor): The generated segmentation mask.
-            transformed_input_size (tuple[int, int]): The size of the transformed input image.
-            original_input_size (tuple[int, int]): The size of the original input image.
+        :param low_res_masks: The generated segmentation mask.
+        :param transformed_input_size: The size of the transformed input image.
+        :param original_input_size: The size of the original input image.
 
-        Returns:
-            binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
+        :return binary_mask: The binarized segmentation mask of the image.
         """
         # post-processing the segmentation mask
         upscaled_masks = self.sam.postprocess_masks(
@@ -162,14 +158,12 @@ class SegMate:
         """
         Generates the segmentation mask.
 
-        Args:
-            image_embedding (torch.Tensor): The encoded image.
-            sparse_embeddings (torch.Tensor): The encoded sparse bounding boxes.
-            dense_embeddings (torch.Tensor): The encoded dense bounding boxes.
+        :param image_embedding: The encoded image.
+        :param sparse_embeddings: The encoded sparse bounding boxes.
+        :param dense_embeddings: The encoded dense bounding boxes.
 
-        Returns:
-            low_res_masks (torch.Tensor): The generated segmentation mask.
-            iou_predictions (torch.Tensor): The generated IOU predictions.
+        :return low_res_masks: The generated segmentation mask.
+        :return iou_predictions: The generated IOU predictions.
         """
         # generating the segmentation mask from the image and the prompt embeddings
         low_res_masks, iou_predictions = self.sam.mask_decoder(
@@ -189,22 +183,19 @@ class SegMate:
         boxes_prompt: np.ndarray = None,
         points_prompt: tuple[np.ndarray, np.ndarray] = (None, None),
         mask_input: np.ndarray = None,
-        #         output_path: str = None
     ) -> np.ndarray:
         """
         Performs image segmentation using the loaded image and input prompt.
 
-        Args:
-            image (str): The image or the path to the image to be segmented.
-            text_prompt (tuple(str, float, float)): The text prompt to be used for segmentation. The
+        :param image: The image or the path to the image to be segmented.
+        :param text_prompt: The text prompt to be used for segmentation. The
                 tuple contains the text prompt, the box threshold, and the text threshold.
-            boxes_prompt (numpy.ndarray): The bounding boxes prompt to be used for segmentation.
-            points_prompt (tuple(numpy.ndarray, numpy.ndarray)): The points prompt to be used for
+        :param boxes_prompt: The bounding boxes prompt to be used for segmentation.
+        :param points_prompt: The points prompt to be used for
                 segmentation. The tuple contains the point coordinates and the point labels.
-            output_path (str): The path to save the resulting segmentation mask.
+        :param mask_input: The mask input to be used for segmentation.
 
-        Returns:
-            binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
+        :return binary_mask: The binarized segmentation mask of the image.
         """
         # setting the model to evaluation mode
         self.sam.eval()
@@ -247,10 +238,6 @@ class SegMate:
         )
         masks = masks.detach().cpu().numpy().astype(np.uint8)
 
-        # saving the segmentation mask if the output path is provided
-#         if output_path is not None:
-#             self.save_mask(binary_masks, output_path)
-
         return masks
 
     def auto_segment(
@@ -266,18 +253,16 @@ class SegMate:
         """
         Performs image segmentation using the automatic mask generation method.
 
-        Args:
-            image (Union[str, numpy.ndarray]): The image or the path to the image to be segmented.
-            points_per_side (int): The number of points per side of the mask.
-            pred_iou_thresh (float): The IOU threshold for the predicted mask.
-            stability_score_thresh (float): The stability score threshold for the predicted mask.
-            crop_n_layers (int): The number of layers to crop from the image.
-            crop_n_points_downscale_factor (int): The downscale factor for the number of points to
+        :param image: The image or the path to the image to be segmented.
+        :param points_per_side: The number of points per side of the mask.
+        :param pred_iou_thresh: The IOU threshold for the predicted mask.
+        :param stability_score_thresh: The stability score threshold for the predicted mask.
+        :param crop_n_layers: The number of layers to crop from the image.
+        :param crop_n_points_downscale_factor: The downscale factor for the number of points to
                 crop from the image.
-            min_mask_region_area (int): The minimum area of the mask region.
+        :param min_mask_region_area: The minimum area of the mask region.
 
-        Returns:
-            masks (numpy.ndarray): The generated segmentation mask of the image.
+        :return masks: The generated segmentation mask of the image.
         """
         # creating the automatic mask generator
         mask_generator = SamAutomaticMaskGenerator(
@@ -307,10 +292,11 @@ class SegMate:
         """
         Visualizes the segmentation mask on the image and saves the resulting visualization.
 
-        Args:
-            image (Union[str, numpy.ndarray]): The image or the path to the image to be segmented.
-            mask (numpy.ndarray): The segmentation mask to be visualized.
-            output_path (str): The path to save the resulting visualization.
+        :param image: The image or the path to the image to be segmented.
+        :param mask: The segmentation mask to be visualized.
+        :param output_path: The path to save the resulting visualization.
+
+        ;return: None
         """
         # loading the image if the input is a path to an image
         if isinstance(image, str):
@@ -340,11 +326,9 @@ class SegMate:
         """
         Prepare the data of the desired set.
 
-        Args:
-            dataset (Dataset): The dataset to be prepared.
+        :param dataset: The dataset to be prepared.
 
-        Returns:
-            torch.utils.data.DataLoader: The data loader of the desired set.
+        :return: The data loader of the desired set.
         """
 
         # creating the data loader
@@ -355,12 +339,10 @@ class SegMate:
         """
         Performs a forward pass on the image and the prompt.
 
-        Args:
-            image (numpy.ndarray): The image to be segmented.
-            bbox_prompt (numpy.ndarray): The bounding boxes prompt to be used for segmentation.
+        :param image: The image to be segmented.
+        :param bbox_prompt: The bounding boxes prompt to be used for segmentation.
 
-        Returns:
-            binary_mask (numpy.ndarray): The binarized segmentation mask of the image.
+        :return binary_mask: The binarized segmentation mask of the image.
         """
         # preprocessing and transforming the image and bounding box prompt(s) with sam's functions
         # input_image, bbox_prompt = self.preprocess_input(image, bbox_prompt)
@@ -391,10 +373,11 @@ class SegMate:
         """
         Fine-tunes the SAM model using the provided training.
 
-        Args:
-            train_data (Dataset): The training data to be used for fine-tuning.
-            lr (float): The learning rate to be used for fine-tuning.
-            num_epochs (int): The number of epochs to be used for fine-tuning.
+        :param train_data: The training data to be used for fine-tuning.
+        :param lr: The learning rate to be used for fine-tuning.
+        :param num_epochs: The number of epochs to be used for fine-tuning.
+
+        :return: None
         """
         # setting the model to training mode
         self.sam.train()

@@ -19,6 +19,11 @@ class ObjectDetector(ABC):
     def __init__(self, model_name, device):
         """
         Constructor for the ObjectDetector class.
+
+        :param model_name: The name of the model to use.
+        :param device: The device to use.
+
+        :return: None
         """
         self.model_name = model_name
         self.device = device
@@ -48,6 +53,11 @@ class GroundingDINO(ObjectDetector):
         ) -> None:
         """
         Constructor for the GroundingDINO class.
+
+        :param model_name: The name of the model to use.
+        :param device: The device to use.
+
+        :return: None
         """
         super().__init__(model_name, device)
 
@@ -70,14 +80,12 @@ class GroundingDINO(ObjectDetector):
         """
         Run the GroundingDINO model prediction.
 
-        Parameters:
-        image_np (np.ndarray): Input PIL Image.
-        text_prompt (str): Text prompt for the model.
-        box_threshold (float): Box threshold for the prediction.
-        text_threshold (float): Text threshold for the prediction.
+        :param image_np: Input PIL Image.
+        :param text_prompt: Text prompt for the model.
+        :param box_threshold: Box threshold for the prediction.
+        :param text_threshold: Text threshold for the prediction.
 
-        Returns:
-        Tuple containing boxes, logits, and phrases.
+        :return: Tuple containing boxes, logits, and phrases.
         """
         image_pil = Image.fromarray(image_np)
         image_trans = utils.transform_image(image_pil)

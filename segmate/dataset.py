@@ -26,11 +26,13 @@ class BISDataset(Dataset):
     ) -> None:
         """
         Constructor for the BISDataset class.
-        Args:
-            dataset (HFDataset): The HuggingFace dataset to use.
-            preprocess (callable): The preprocessing function to use.
-            img_size (int): The size of the image to use.
-            device (str): The device to use.
+       
+        :param dataset: The HuggingFace dataset to use.
+        :param preprocess: The preprocessing function to use.
+        :param img_size: The size of the image to use.
+        :param device: The device to use.
+
+        :return: None
         """
         self.dataset = dataset
         self.preprocess = preprocess
@@ -46,10 +48,10 @@ class BISDataset(Dataset):
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns the item at the given index.
-        Args:
-            idx (int): The index of the item to return.
-        Returns:
-            tuple(torch.Tensor, torch.Tensor, torch.Tensor): The item at the given index.
+        
+        :param idx: The index of the item to return.
+        
+        :return: The item at the given index.
         """
         item = self.dataset[idx]
         image = np.array(item["image"])
