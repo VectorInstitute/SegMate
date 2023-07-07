@@ -10,7 +10,6 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import monai
 import torch
 import cv2
 import numpy as np
