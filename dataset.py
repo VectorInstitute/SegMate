@@ -66,7 +66,7 @@ class BISDataset(Dataset):
 
         # prepare the prompt for the model
         box_prompt = np.array(item['objects']['bbox']).astype('float32')
-        box_prompt = utils.convert_bboxes(box_prompt)
+        box_prompt = utils.convert_coco_to_sam(box_prompt)
         box_prompt = transform.apply_boxes(box_prompt, image.shape[:2])
         box_prompt = torch.as_tensor(box_prompt, device=self.device)
 

@@ -403,9 +403,6 @@ class SegMate:
         # creating the training and validation data loaders
         train_loader = self.get_dataset(train_data)
 
-        # creating the optimizer and the loss function
-        opt = optimizer(self.sam.mask_decoder.parameters(), lr=lr)
-
         for epoch in range(num_epochs):
             epoch_losses = []
             for input_image, box_prompt, gt_mask in tqdm(train_loader):
@@ -420,11 +417,11 @@ class SegMate:
                 loss = criterion(pred_mask, gt_mask)
 
                 # backward pass (compute gradients of parameters w.r.t. loss)
-                opt.zero_grad()
+                optimizer.zero_grad()
                 loss.backward()
 
                 # optimize
-                opt.step()
+                optimizer.step()
                 epoch_losses.append(loss.item())
 
             print(f'EPOCH: {epoch}')
