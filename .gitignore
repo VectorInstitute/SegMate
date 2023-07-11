@@ -12,3 +12,6 @@ __pycache__/
 
 # Sphinx build files
 docs/_build/
+
+# Package distribution
+dist/
