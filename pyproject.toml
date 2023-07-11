@@ -21,14 +21,14 @@ classifiers = [
 dependencies = [
   "numpy>=1.22.4",
   "torch>=2.0.1",
-  "datasets>=2.13.1",
+  "datasets>=2.13.0",
   "segment_anything",
   "groundingdino",
   "pycocotools",
-  "cv2>=4.7.0",
-  "huggingface_hub>=0.16.4",
-  "matplotlib>=3.7.1",
-  "tqdm>=4.65.0",
+  "opencv-python>=4.7.0",
+  "huggingface_hub",
+  "matplotlib",
+  "tqdm>=4.62.3",
 ]
 
 [project.urls]

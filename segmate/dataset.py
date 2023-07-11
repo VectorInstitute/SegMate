@@ -9,7 +9,7 @@ import torch
 import numpy as np
 from datasets import Dataset as HFDataset
 
-import utils
+import segmate.utils as utils
 
 
 class BISDataset(Dataset):

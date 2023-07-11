@@ -41,9 +41,9 @@ To use the provided code snippets, follow the steps below:
 
     import torch
     
-    from segmate import SegMate
-    from object_detector import GroundingDINO
-    import utils
+    from segmate.segmate import SegMate
+    from segmate.object_detector import GroundingDINO
+    import segmate.utils as utils
 
     od = GroundingDINO()
     sm = SegMate(model_type='MODEL_TYPE', checkpoint='PATH_to_MODEL', device='cuda', object_detector=od)

@@ -9,7 +9,7 @@ from groundingdino.util.inference import predict
 import torch
 import numpy as np
 
-import utils
+import segmate.utils as utils
 
 
 class ObjectDetector(ABC):

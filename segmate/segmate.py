@@ -14,8 +14,8 @@ import cv2
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 from segment_anything.utils.transforms import ResizeLongestSide
 
-import utils
-from object_detector import ObjectDetector
+import segmate.utils as utils
+from segmate.object_detector import ObjectDetector
 
 
 class SegMate:
