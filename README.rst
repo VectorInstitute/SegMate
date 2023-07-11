@@ -1,8 +1,8 @@
 .. start-in-sphinx-home-docs
 
-=======
+=========================================
 SegMate: A Segment Anything Model Toolkit
-=======
+=========================================
 
 This repository is a toolkit for using the Segment Anything Model (SAM) developed by Meta AI. It is capable of accurately "cutting out" any object from an image with just a single click.
 

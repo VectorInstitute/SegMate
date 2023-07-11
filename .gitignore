@@ -9,3 +9,6 @@ __pycache__/
 
 # IPython Notebook files
 .ipynb_checkpoints/
+
+# Sphinx build files
+docs/_build/

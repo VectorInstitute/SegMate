@@ -4,15 +4,15 @@ This file contains the SegMate class
 from statistics import mean
 from typing import Union
 
-from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
-from segment_anything.utils.transforms import ResizeLongestSide
+import numpy as np
+import torch
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import torch
 import cv2
-import numpy as np
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
+from segment_anything.utils.transforms import ResizeLongestSide
 
 import utils
 from object_detector import ObjectDetector
@@ -33,11 +33,14 @@ class SegMate:
         """
         Initializes the SamKit object with the provided model path.
 
-        :param model_type: The type of SAM: (vit_b, vit_l, vit_h) -> b: base, l: large, h: huge.
-        :param checkpoint: The path to the pre-trained SAM.
-        :param device:  The device to load the model on (default: cuda).
+        Args:
+            model_type: The type of SAM: (vit_b, vit_l, vit_h) -> b: base, l: large, h: huge.
+            checkpoint: The path to the pre-trained SAM.
+            device:  The device to load the model on (default: cuda).
+            object_detector: The object detector to be used for zero-shot object detection.
 
-        :return: None
+        Returns:
+            None
         """
         self.model_type = model_type
         self.checkpoint = checkpoint
@@ -53,6 +56,12 @@ class SegMate:
     def set_object_detector(self, object_detector: ObjectDetector) -> None:
         """
         Sets the object detector to the SegMate instance.
+
+        Args:
+            object_detector: The object detector to be used for zero-shot object detection.
+
+        Returns:
+            None
         """
         self.object_detector = object_detector
 
@@ -60,10 +69,12 @@ class SegMate:
         """
         Saves the resulting segmentation mask to the specified output path.
 
-        :param binary_mask: The binarized segmentation mask of the image.
-        :param output_path: The path to save the segmentation map.
+        Args:
+            binary_mask: The binarized segmentation mask of the image.
+            output_path: The path to save the segmentation map.
 
-        :return: None
+        Returns:
+            None
         """
         # saving the segmentation mask
         cv2.imwrite(output_path, binary_mask)
@@ -77,11 +88,13 @@ class SegMate:
         Transform and preprocesses the input image and bounding boxes to the required size and
         converts them to tensors.
 
-        :param image: The image to be transformed.
-        :param bbox_prompt: The bounding boxes to be transformed.
+        Args:
+            image: The image to be transformed.
+            bbox_prompt: The bounding boxes to be transformed.
 
-        :return image: The transformed image.
-        :return bbox_prompt: The transformed bounding boxes.
+        Returns:
+            image: The transformed image.
+            bbox_prompt: The transformed bounding boxes.
         """
         # transforming the image to the required size and preprocess it
         transform = ResizeLongestSide(self.sam.image_encoder.img_size)
@@ -105,12 +118,14 @@ class SegMate:
         """
         Encodes the input image and bounding boxes.
 
-        :param image: The transformed image.
-        :param bbox_prompt: The transformed bounding boxes.
+        Args:
+            image: The transformed image.
+            bbox_prompt: The transformed bounding boxes.
 
-        :return image_embedding: The encoded image.
-        :return sparse_embeddings: The encoded sparse bounding boxes.
-        :return dense_embeddings: The encoded dense bounding boxes.
+        Returns:
+            image_embedding: The encoded image.
+            sparse_embeddings: The encoded sparse bounding boxes.
+            dense_embeddings: The encoded dense bounding boxes.
         """
         # encoding the image with sam's image encoder
         image_embedding = self.sam.image_encoder(input_image)
@@ -133,11 +148,13 @@ class SegMate:
         """
         Post-processes the segmentation mask to the original input size.
 
-        :param low_res_masks: The generated segmentation mask.
-        :param transformed_input_size: The size of the transformed input image.
-        :param original_input_size: The size of the original input image.
+        Args:
+            low_res_masks: The generated segmentation mask.
+            transformed_input_size: The size of the transformed input image.
+            original_input_size: The size of the original input image.
 
-        :return binary_mask: The binarized segmentation mask of the image.
+        Returns:
+            binary_mask: The binarized segmentation mask of the image.
         """
         # post-processing the segmentation mask
         upscaled_masks = self.sam.postprocess_masks(
@@ -158,12 +175,14 @@ class SegMate:
         """
         Generates the segmentation mask.
 
-        :param image_embedding: The encoded image.
-        :param sparse_embeddings: The encoded sparse bounding boxes.
-        :param dense_embeddings: The encoded dense bounding boxes.
+        Args:
+            image_embedding: The encoded image.
+            sparse_embeddings: The encoded sparse bounding boxes.
+            dense_embeddings: The encoded dense bounding boxes.
 
-        :return low_res_masks: The generated segmentation mask.
-        :return iou_predictions: The generated IOU predictions.
+        Returns:
+            low_res_masks: The generated segmentation mask.
+            iou_predictions: The generated IOU predictions.
         """
         # generating the segmentation mask from the image and the prompt embeddings
         low_res_masks, iou_predictions = self.sam.mask_decoder(
@@ -187,15 +206,17 @@ class SegMate:
         """
         Performs image segmentation using the loaded image and input prompt.
 
-        :param image: The image or the path to the image to be segmented.
-        :param text_prompt: The text prompt to be used for segmentation. The
+        Args:
+            image: The image or the path to the image to be segmented.
+            text_prompt: The text prompt to be used for segmentation. The
                 tuple contains the text prompt, the box threshold, and the text threshold.
-        :param boxes_prompt: The bounding boxes prompt to be used for segmentation.
-        :param points_prompt: The points prompt to be used for
+            boxes_prompt: The bounding boxes prompt to be used for segmentation.
+            points_prompt: The points prompt to be used for
                 segmentation. The tuple contains the point coordinates and the point labels.
-        :param mask_input: The mask input to be used for segmentation.
+            mask_input: The mask input to be used for segmentation.
 
-        :return binary_mask: The binarized segmentation mask of the image.
+        Returns:
+            binary_mask: The binarized segmentation mask of the image.
         """
         # setting the model to evaluation mode
         self.sam.eval()
@@ -253,17 +274,22 @@ class SegMate:
         """
         Performs image segmentation using the automatic mask generation method.
 
-        :param image: The image or the path to the image to be segmented.
-        :param points_per_side: The number of points per side of the mask.
-        :param pred_iou_thresh: The IOU threshold for the predicted mask.
-        :param stability_score_thresh: The stability score threshold for the predicted mask.
-        :param crop_n_layers: The number of layers to crop from the image.
-        :param crop_n_points_downscale_factor: The downscale factor for the number of points to
+        Args:
+            image: The image or the path to the image to be segmented.
+            points_per_side: The number of points per side of the mask.
+            pred_iou_thresh: The IOU threshold for the predicted mask.
+            stability_score_thresh: The stability score threshold for the predicted mask.
+            crop_n_layers: The number of layers to crop from the image.
+            crop_n_points_downscale_factor: The downscale factor for the number of points to
                 crop from the image.
-        :param min_mask_region_area: The minimum area of the mask region.
+            min_mask_region_area: The minimum area of the mask region.
 
-        :return masks: The generated segmentation mask of the image.
+        Returns:
+            masks: The generated segmentation mask of the image.
         """
+        # setting the model to evaluation mode
+        self.sam.eval()
+
         # creating the automatic mask generator
         mask_generator = SamAutomaticMaskGenerator(
             model=self.sam,
@@ -292,11 +318,13 @@ class SegMate:
         """
         Visualizes the segmentation mask on the image and saves the resulting visualization.
 
-        :param image: The image or the path to the image to be segmented.
-        :param mask: The segmentation mask to be visualized.
-        :param output_path: The path to save the resulting visualization.
+        Args:
+            image: The image or the path to the image to be segmented.
+            mask: The segmentation mask to be visualized.
+            output_path: The path to save the resulting visualization.
 
-        ;return: None
+        Returns:
+            None
         """
         # loading the image if the input is a path to an image
         if isinstance(image, str):
@@ -326,23 +354,33 @@ class SegMate:
         """
         Prepare the data of the desired set.
 
-        :param dataset: The dataset to be prepared.
+        Args:
+            dataset: The dataset to be prepared.
 
-        :return: The data loader of the desired set.
+        Returns:
+            The data loader of the desired set.
         """
 
         # creating the data loader
         return torch.utils.data.DataLoader(
             dataset, batch_size=1, shuffle=False)
 
-    def forward_pass(self, input_image: np.ndarray, bbox_prompt: np.ndarray, original_input_size: int) -> np.ndarray:
+    def forward_pass(
+            self,
+            input_image: np.ndarray,
+            bbox_prompt: np.ndarray,
+            original_input_size: int
+        ) -> np.ndarray:
         """
         Performs a forward pass on the image and the prompt.
 
-        :param image: The image to be segmented.
-        :param bbox_prompt: The bounding boxes prompt to be used for segmentation.
+        Args:
+            input_image: The image to be segmented.
+            bbox_prompt: The bounding boxes prompt to be used for segmentation.
+            original_input_size: The size of the original input image.
 
-        :return binary_mask: The binarized segmentation mask of the image.
+        Returns:
+            binary_mask: The binarized segmentation mask of the image.
         """
         # preprocessing and transforming the image and bounding box prompt(s) with sam's functions
         # input_image, bbox_prompt = self.preprocess_input(image, bbox_prompt)
@@ -367,17 +405,20 @@ class SegMate:
             original_input_size: int,
             criterion: torch.nn,
             optimizer: torch.optim,
-            lr: float = 1e-5,
             num_epochs: int = 10
         ) -> None:
         """
         Fine-tunes the SAM model using the provided training.
 
-        :param train_data: The training data to be used for fine-tuning.
-        :param lr: The learning rate to be used for fine-tuning.
-        :param num_epochs: The number of epochs to be used for fine-tuning.
+        Args:
+            train_data: The training data to be used for fine-tuning.
+            original_input_size: The size of the original input image.
+            criterion: The loss function to be used for fine-tuning.
+            optimizer: The optimizer to be used for fine-tuning.
+            num_epochs: The number of epochs to be used for fine-tuning.
 
-        :return: None
+        Returns:
+            None
         """
         # setting the model to training mode
         self.sam.train()

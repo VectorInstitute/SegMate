@@ -26,13 +26,15 @@ class BISDataset(Dataset):
     ) -> None:
         """
         Constructor for the BISDataset class.
-       
-        :param dataset: The HuggingFace dataset to use.
-        :param preprocess: The preprocessing function to use.
-        :param img_size: The size of the image to use.
-        :param device: The device to use.
+        
+        Args:
+            dataset: The HuggingFace dataset to use.
+            preprocess: The preprocessing function to use.
+            img_size: The size of the image to use.
+            device: The device to use.
 
-        :return: None
+        Returns:
+            None
         """
         self.dataset = dataset
         self.preprocess = preprocess
@@ -49,9 +51,11 @@ class BISDataset(Dataset):
         """
         Returns the item at the given index.
         
-        :param idx: The index of the item to return.
+        Args:
+            idx: The index of the item to return.
         
-        :return: The item at the given index.
+        Returns:
+            The item at the given index.
         """
         item = self.dataset[idx]
         image = np.array(item["image"])
