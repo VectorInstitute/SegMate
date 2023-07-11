@@ -4,7 +4,7 @@
 SegMate: A Segment Anything Model Toolkit
 =========================================
 
-This repository is a toolkit for using the `Segment Anything Model (SAM) <https://segment-anything.com>` developed by Meta AI. It is capable of accurately "cutting out" any object from an image with just a single click.
+This repository is a toolkit for using the `Segment Anything Model (SAM) <https://segment-anything.com>`_ developed by Meta AI. It is capable of accurately "cutting out" any object from an image with just a single click.
 
 SAM is a promptable segmentation system that exhibits zero-shot generalization to unfamiliar objects and images, eliminating the need for additional training. By providing prompts that specify what needs to be segmented in an image, SAM can perform a wide range of segmentation tasks without requiring additional training. 
 
@@ -14,7 +14,7 @@ Features
 - **Easy inference** with SAM, supporting bounding boxes, points, masks, and text prompts
 - **Automatic masking** without the need for prompts
 - **Finetune** SAM on custom datasets
-- **`GroundingDINO <https://github.com/IDEA-Research/GroundingDINO/tree/main>` integration** for text prompt segmentation
+- `GroundingDINO <https://github.com/IDEA-Research/GroundingDINO/tree/main>`_ **integration** for text prompt segmentation
 
 .. end-in-sphinx-home-docs
 
