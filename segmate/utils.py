@@ -9,7 +9,6 @@ from pycocotools import mask as coco_mask
 import matplotlib.pyplot as plt
 from matplotlib import patches
 import torch
-from torch.nn import functional as F
 import groundingdino.datasets.transforms as T
 from groundingdino.models import build_model
 from groundingdino.util.slconfig import SLConfig
@@ -237,12 +236,12 @@ def show_masks(image: np.ndarray, masks: np.ndarray) -> None:
     """
     image_pil = Image.fromarray(image)
     # Adjusted for single channel
-    mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)  
+    mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)
 
     for i, mask in enumerate(masks):
         mask = mask[0, :, :]
         # Assign a unique value for each mask
-        mask_overlay += ((mask > 0) * (i + 1)).astype(np.uint8)  
+        mask_overlay += ((mask > 0) * (i + 1)).astype(np.uint8)
 
     # Normalize mask_overlay to be in [0, 255]
     mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
@@ -270,7 +269,7 @@ def show_points(image: np.ndarray, point_coords: list, point_labels: list) -> No
 
 
 def binarize_mask(
-    masks: np.ndarray, 
+    masks: np.ndarray,
     sum_all_masks: bool = True
 ) -> np.ndarray:
     """
@@ -287,7 +286,7 @@ def binarize_mask(
     masks = masks.sum(axis=1)
     thresholded_mask = np.where(masks > 0.0, 1, 0)
     binary_mask = thresholded_mask.astype(np.int8)
-    
+
     if sum_all_masks:
         binary_mask = np.sum(binary_mask, axis=0)
         binary_mask = np.where(binary_mask > 1, 1, binary_mask)

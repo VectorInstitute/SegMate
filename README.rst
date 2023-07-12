@@ -23,7 +23,13 @@ Features
 Installation
 ============
 
-To install ``segmate`` from `PyPI <https://pypi.org/project/segmate/>`_:
+First, install ``groundingdino`` from its repository, this is a dependency for ``segmate``:
+
+.. code-block:: console
+
+    pip install -U git+https://github.com/IDEA-Research/GroundingDINO.git
+
+Then, install ``segmate`` from `PyPI <https://pypi.org/project/segmate/>`_:
 
 .. code-block:: console
 
