@@ -4,6 +4,17 @@
 SegMate: A Segment Anything Model Toolkit
 =========================================
 
+.. image:: https://img.shields.io/pypi/v/segmate.svg
+        :target: https://pypi.org/project/segmate
+
+.. image:: https://readthedocs.org/projects/segmate/badge/?version=latest
+        :target: https://hnp.readthedocs.io/en/latest/?version=latest
+        :alt: Documentation Status
+
+.. image:: https://img.shields.io/pypi/l/segmate.svg
+        :target: https://opensource.org/licenses/BSD-3-Clause
+        :alt: License
+
 This repository is a toolkit for using the `Segment Anything Model (SAM) <https://segment-anything.com>`_ developed by Meta AI. It is capable of accurately "cutting out" any object from an image with just a single click.
 
 SAM is a promptable segmentation system that exhibits zero-shot generalization to unfamiliar objects and images, eliminating the need for additional training. By providing prompts that specify what needs to be segmented in an image, SAM can perform a wide range of segmentation tasks without requiring additional training. 
