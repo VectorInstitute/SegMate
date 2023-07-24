@@ -36,7 +36,7 @@ Installation
 
 First, install ``groundingdino`` from its repository, this is a dependency for ``segmate``:
 
-**NOTE**: There is an issue with the setup script in the GroundingDINO repository causing it not able to install ``torch`` properly, please manually install torch for now with ``pip install torch``
+**NOTE**: There is an issue with the setup script in the GroundingDINO repository causing it not able to install ``torch`` properly, please `manually install PyTorch <https://pytorch.org/get-started/locally/>`_ for now 
 
 .. code-block:: console
 
