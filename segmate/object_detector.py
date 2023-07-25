@@ -11,6 +11,9 @@ import numpy as np
 
 import segmate.utils as utils
 
+# ov_seg imports
+from ov_seg.open_vocab_seg.utils import VisualizationDemo, SAMVisualizationDemo
+
 
 class ObjectDetector(ABC):
     """
@@ -107,3 +110,57 @@ class GroundingDINO(ObjectDetector):
             [width, height, width, height])
 
         return boxes, logits, phrases
+    
+class OvSeg(ObjectDetector):
+    """
+    A class for the OvSeg object detector.
+    """
+    def __init__(
+            self,
+            model_name:str="ovseg",
+            device:str="cuda"
+        ) -> None:
+        """
+        Constructor for the OvSeg class.
+
+        Args:
+            model_name: The name of the model to use.
+            device: The device to use.
+
+        Returns:
+            None
+        """
+        super().__init__(model_name, device)
+
+    def load_model(self) -> torch.nn.Module:
+        """
+        Build the OvSeg model.
+        """
+        config_file = "../ov_seg/configs/ovseg_swinB_vitL_demo.yaml"
+        opts = ["MODEL.WEIGHTS", '../../ovseg_swinbase_vitL14_ft_mpt.pth']
+        cfg = utils.setup_cfg_ovseg(config_file, opts)
+        granularity = 0.8
+        return SAMVisualizationDemo(cfg, granularity, '../../sam_vit_l_0b3195.pth', '../../ovseg_clip_l_9a1909.pth')
+
+    def predict(
+            self,
+            image_np: np.ndarray,
+            text_prompt: str,
+            box_threshold: float,
+            text_threshold: float
+        ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Run the GroundingDINO model prediction.
+
+        Args:
+            image_np: Input PIL Image.
+            text_prompt: Text prompt for the model.
+            box_threshold: Box threshold for the prediction.
+            text_threshold: Text threshold for the prediction.
+
+        Returns:
+            Tuple containing boxes, logits, and phrases.
+        """
+        predictions, visualized_output = self.model.run_on_image(image_np, text_prompt)
+
+        return predictions, visualized_output

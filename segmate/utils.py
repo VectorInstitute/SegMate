@@ -15,6 +15,13 @@ from groundingdino.util.slconfig import SLConfig
 from groundingdino.util.utils import clean_state_dict
 from huggingface_hub import hf_hub_download
 
+# ov_seg imports
+from detectron2.config import get_cfg
+from detectron2.projects.deeplab import add_deeplab_config
+from detectron2.utils.logger import setup_logger
+from ov_seg.open_vocab_seg import add_ovseg_config
+from detectron2.utils.file_io import PathManager
+
 
 def show_bounding_boxes(image: np.ndarray, bounding_boxes: np.ndarray) -> None:
     """
@@ -309,3 +316,81 @@ def convert_bboxes2center_points(bboxes: np.ndarray) -> np.ndarray:
     center_points[:, 1] = (bboxes[:, 1] + bboxes[:, 3]) / 2
 
     return center_points
+
+def setup_cfg_ovseg(config_file, opts):
+    """
+    Used to create and set up a configuration object for ov_seg. Common for the detectron2 library, which ov_seg uses. 
+
+    Args:
+        config_file (str): Path to the configuration file (Stored as SATSAM/ov_seg/configs/ovseg_swinB_vitL_demo.yaml)
+        opts (list): A list of command-line options or arguments used to update the cfg object with additional configurations provided as command-line arguments. In our case, it is: opts = ["MODEL.WEIGHTS", '../../ovseg_swinbase_vitL14_ft_mpt.pth']
+
+    Returns:
+        cfg (detectron2.config.config.CfgNode): A configuration object that has been set up and configured for the deep learning model
+    """
+    # load config from file and command-line arguments
+    cfg = get_cfg()
+    # for poly lr schedule
+    add_deeplab_config(cfg)
+    add_ovseg_config(cfg)
+    cfg.merge_from_file(config_file)
+    cfg.merge_from_list(opts)
+    cfg.freeze()
+    return cfg
+
+
+def convert_PIL_to_numpy(image, format):
+    """
+    Convert PIL image to numpy array of target format.
+
+    Args:
+        image (PIL.Image): a PIL image
+        format (str): the format of output image
+
+    Returns:
+        (np.ndarray): also see `read_image`
+    """
+    if format is not None:
+        # PIL only supports RGB, so convert to RGB and flip channels over below
+        conversion_format = format
+        if format in ["BGR", "YUV-BT.601"]:
+            conversion_format = "RGB"
+        image = image.convert(conversion_format)
+    image = np.asarray(image)
+    # PIL squeezes out the channel dimension for "L", so make it HWC
+    if format == "L":
+        image = np.expand_dims(image, -1)
+
+    # handle formats not supported by PIL
+    elif format == "BGR":
+        # flip channels if needed
+        image = image[:, :, ::-1]
+    elif format == "YUV-BT.601":
+        image = image / 255.0
+        image = np.dot(image, np.array(_M_RGB2YUV).T)
+
+    return image
+
+def read_image_ovseg(file_name, format=None):
+    """
+    Source: https://detectron2.readthedocs.io/en/latest/_modules/detectron2/data/detection_utils.html
+    Read an image into the given format.
+    Will apply rotation and flipping if the image has such exif information.
+
+    Args:
+        file_name (str): image file path
+        format (str): one of the supported image modes in PIL, or "BGR" or "YUV-BT.601".
+
+    Returns:
+        image (np.ndarray):
+            an HWC image in the given format, which is 0-255, uint8 for
+            supported image modes in PIL or "BGR"; float (0-1 for Y) for YUV-BT.601.
+    """
+    with PathManager.open(file_name, "rb") as f:
+        image = Image.open(f)
+
+#         # work around this bug: https://github.com/python-pillow/Pillow/issues/3973
+#         image = _apply_exif_orientation(image)
+        return convert_PIL_to_numpy(image, format)
+    
+

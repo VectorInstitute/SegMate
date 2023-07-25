@@ -1,0 +1,3 @@
+[submodule "ov_seg"]
+	path = ov_seg
+	url = https://github.com/aditimahe/ov_seg.git

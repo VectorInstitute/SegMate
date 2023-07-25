@@ -218,48 +218,61 @@ class SegMate:
         Returns:
             binary_mask: The binarized segmentation mask of the image.
         """
-        # setting the model to evaluation mode
-        self.sam.eval()
+        print(f'Using {self.object_detector.model_name} Object Detector')
+        if self.object_detector.model_name == 'groundingdino':
+            # setting the model to evaluation mode
+            self.sam.eval()
 
-        # loading the image if the input is a path to an image
-        if isinstance(image, str):
-            image = utils.load_image(image)
+            # loading the image if the input is a path to an image
+            if isinstance(image, str):
+                image = utils.load_image(image)
 
-        self.predictor.set_image(image)
+            self.predictor.set_image(image)
 
-        # converting the text prompt to a list of bounding boxes with a zero-shot object detection
-        # model (Grounding Dino, etc.)
-        if text_prompt is not None:
-            text, box_threshold, text_threshold = text_prompt
-            boxes_prompt, _, _ = self.object_detector.predict(
-                image, text, box_threshold, text_threshold)
-        if boxes_prompt is not None:
-            boxes_prompt = torch.tensor(boxes_prompt).to(self.device)
-            boxes_prompt = self.predictor.transform.apply_boxes_torch(
-                boxes_prompt, image.shape[:2])
-        point_coords, point_labels = points_prompt
-        if point_coords is not None and point_labels is not None:
-            # point_coords, point_labels = points_prompt
-            point_coords = torch.tensor(point_coords).to(
-                self.device).unsqueeze(1)
-            point_labels = torch.tensor(point_labels).to(
-                self.device).unsqueeze(1)
-            point_coords = self.predictor.transform.apply_coords_torch(
-                point_coords, image.shape[:2])
-        if mask_input is not None:
-            mask_input = torch.tensor(mask_input).to(self.device)
-            mask_input = mask_input[None, :, :, :]
+            # converting the text prompt to a list of bounding boxes with a zero-shot object detection
+            # model (Grounding Dino, etc.)
+            if text_prompt is not None:
+                text, box_threshold, text_threshold = text_prompt
+                boxes_prompt, _, _ = self.object_detector.predict(
+                    image, text, box_threshold, text_threshold)
+            if boxes_prompt is not None:
+                boxes_prompt = torch.tensor(boxes_prompt).to(self.device)
+                boxes_prompt = self.predictor.transform.apply_boxes_torch(
+                    boxes_prompt, image.shape[:2])
+            point_coords, point_labels = points_prompt
+            if point_coords is not None and point_labels is not None:
+                # point_coords, point_labels = points_prompt
+                point_coords = torch.tensor(point_coords).to(
+                    self.device).unsqueeze(1)
+                point_labels = torch.tensor(point_labels).to(
+                    self.device).unsqueeze(1)
+                point_coords = self.predictor.transform.apply_coords_torch(
+                    point_coords, image.shape[:2])
+            if mask_input is not None:
+                mask_input = torch.tensor(mask_input).to(self.device)
+                mask_input = mask_input[None, :, :, :]
 
-        # performing image segmentation with sam
-        masks, _, _ = self.predictor.predict_torch(
-            point_coords=point_coords,
-            point_labels=point_labels,
-            boxes=boxes_prompt,
-            mask_input=mask_input,
-        )
-        masks = masks.detach().cpu().numpy().astype(np.uint8)
+            # performing image segmentation with sam
+            masks, _, _ = self.predictor.predict_torch(
+                point_coords=point_coords,
+                point_labels=point_labels,
+                boxes=boxes_prompt,
+                mask_input=mask_input,
+            )
+            masks = masks.detach().cpu().numpy().astype(np.uint8)
 
-        return masks
+            return masks
+        
+        if self.object_detector.model_name == 'ovseg':
+            if text_prompt is not None:
+                text, box_threshold, text_threshold = text_prompt
+            predictions, visualized_output = self.object_detector.predict(image, text, box_threshold=None, text_threshold=None)
+            plt.imshow(visualized_output.get_image())
+            plt.axis('off')
+            plt.show()
+            return None
+    
+        
 
     def auto_segment(
         self,
