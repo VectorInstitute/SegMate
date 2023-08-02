@@ -10,11 +10,12 @@ Getting Started
 
 .. code-block:: python
 
-    masks = sm.segment(image=input_image, text_prompt=["building", 0.30, 0.25])
+    bbox, _, _ = od.detect(input_image, "building", 0.30, 0.25)
+    masks = sm.segment(image=input_image, boxes_prompt=bbox)
     utils.show_masks(masks)
 
 
-4. Perform segmentation with point prompts:
+1. Perform segmentation with point prompts:
 
 .. code-block:: python
 
@@ -34,7 +35,7 @@ Getting Started
 
 .. code-block:: python
 
-    masks = sm.visualize_automask(image=input_image, mask_input=input_masks)
+    masks = utils.visualize_automask(image=input_image, mask_input=input_masks)
     utils.show_masks(masks)
 
 

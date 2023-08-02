@@ -2,6 +2,7 @@
 This file contains utility functions for the SegMate package.
 """
 from PIL import Image
+from typing import Union
 
 import cv2
 import numpy as np
@@ -9,11 +10,8 @@ from pycocotools import mask as coco_mask
 import matplotlib.pyplot as plt
 from matplotlib import patches
 import torch
+from torch.utils.data import Dataset
 import groundingdino.datasets.transforms as T
-from groundingdino.models import build_model
-from groundingdino.util.slconfig import SLConfig
-from groundingdino.util.utils import clean_state_dict
-from huggingface_hub import hf_hub_download
 
 
 def show_bounding_boxes(image: np.ndarray, bounding_boxes: np.ndarray) -> None:
@@ -153,46 +151,6 @@ def transform_image(image: Image) -> torch.Tensor:
     return image_transformed
 
 
-def load_model_hf(
-        repo_id: str,
-        filename: str,
-        ckpt_config_filename: str,
-        device: str = 'cpu'
-    ) -> torch.nn.Module:
-    """
-    Loads a model from HuggingFace Model Hub.
-
-    Parameters:
-    repo_id (str): Repository ID on HuggingFace Model Hub.
-    filename (str): Name of the model file in the repository.
-    ckpt_config_filename (str): Name of the config file for the model in the repository.
-    device (str): Device to load the model onto. Default is 'cpu'.
-
-    Returns:
-    torch.nn.Module: The loaded model.
-    """
-    # Ensure the repo ID and filenames are valid
-    assert isinstance(repo_id, str) and repo_id, "Invalid repository ID"
-    assert isinstance(filename, str) and filename, "Invalid model filename"
-    assert isinstance(ckpt_config_filename,
-                      str) and ckpt_config_filename, "Invalid config filename"
-
-    # Download the config file and build the model from it
-    cache_config_file = hf_hub_download(
-        repo_id=repo_id, filename=ckpt_config_filename)
-    args = SLConfig.fromfile(cache_config_file)
-    model = build_model(args)
-    model.to(device)
-
-    # Download the model checkpoint and load it into the model
-    cache_file = hf_hub_download(repo_id=repo_id, filename=filename)
-    checkpoint = torch.load(cache_file, map_location=device)
-    model.load_state_dict(clean_state_dict(checkpoint['model']), strict=False)
-    model.eval()
-
-    return model
-
-
 def load_image(image_path: str) -> np.ndarray:
     """
     Loads the image.
@@ -309,3 +267,75 @@ def convert_bboxes2center_points(bboxes: np.ndarray) -> np.ndarray:
     center_points[:, 1] = (bboxes[:, 1] + bboxes[:, 3]) / 2
 
     return center_points
+
+
+def save_mask(mask: np.ndarray, output_path: str) -> None:
+        """
+        Saves the segmentation mask to the specified output path.
+
+        Args:
+            binary_mask: The binarized segmentation mask of the image.
+            output_path: The path to save the segmentation map.
+
+        Returns:
+            None
+        """
+        # saving the segmentation mask
+        cv2.imwrite(output_path, mask)
+
+
+def visualize_automask(
+    image: Union[str, np.ndarray],
+    masks: np.ndarray,
+    output_path: str = None
+) -> None:
+    """
+    Visualizes the segmentation mask on the image and saves the resulting visualization.
+
+    Args:
+        image: The image or the path to the image to be segmented.
+        mask: The segmentation mask to be visualized.
+        output_path: The path to save the resulting visualization.
+
+    Returns:
+        None
+    """
+    # loading the image if the input is a path to an image
+    if isinstance(image, str):
+        image = load_image(image)
+
+    # Create a new figure with two axes
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+
+    # Display the first image on the first axis
+    plt.axis('off')
+    ax1.imshow(image)
+    ax1.set_title('Original Image')
+    ax1.axis('off')
+
+    # Display the second image on the second axis
+    plt.axis('off')
+    ax2.imshow(image)
+    show_anns(masks, ax2)
+    ax2.set_title('Image with Masks')
+    ax2.axis('off')
+
+    if output_path is not None:
+        # Save the figure
+        plt.savefig(output_path, bbox_inches='tight')
+
+
+def get_dataset(dataset: Dataset) -> torch.utils.data.DataLoader:
+    """
+    Prepare the data of the desired set.
+
+    Args:
+        dataset: The dataset to be prepared.
+
+    Returns:
+        The data loader of the desired set.
+    """
+
+    # creating the data loader
+    return torch.utils.data.DataLoader(
+        dataset, batch_size=1, shuffle=False)

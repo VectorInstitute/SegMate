@@ -64,11 +64,11 @@ To use the provided code snippets, follow the steps below:
     from segmate.object_detector import GroundingDINO
     import segmate.utils as utils
 
-    od = GroundingDINO()
-    sm = SegMate(model_type='MODEL_TYPE', checkpoint='PATH_to_MODEL', device='cuda', object_detector=od)
+    od = GroundingDINO(device='cuda')
+    sm = SegMate(model_type='MODEL_TYPE', checkpoint='PATH_to_MODEL', device='cuda')
 
 
-2. Perform segmentation with bounding box prompts:
+1. Perform segmentation with bounding box prompts:
 
 .. code-block:: python
 

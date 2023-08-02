@@ -1,6 +1,8 @@
 """
-This file contains the SegMate class
+This file contains all segmentation model classes.
 """
+
+from abc import ABC, abstractmethod
 from statistics import mean
 from typing import Union
 
@@ -8,77 +10,71 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 from torch.utils.data import Dataset
-import matplotlib.pyplot as plt
 from tqdm import tqdm
-import cv2
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 from segment_anything.utils.transforms import ResizeLongestSide
 
 import segmate.utils as utils
-from segmate.object_detector import ObjectDetector
 
 
-class SegMate:
+class SegmentationModel(ABC):
     """
-    Class for interacting with the Segment Anything Model (SAM) for image segmentation.
+    An abstract class for all segmentation models.
     """
-
-    def __init__(
-        self,
-        model_type: str = 'vit_b',
-        checkpoint: str = 'sam_vit_b_01ec64.pth',
-        device: str = 'cuda',
-        object_detector: ObjectDetector = None,
-    ) -> None:
+    def __init__(self, device):
         """
-        Initializes the SamKit object with the provided model path.
+        Constructor for the SegmentationModel class.
 
         Args:
-            model_type: The type of SAM: (vit_b, vit_l, vit_h) -> b: base, l: large, h: huge.
-            checkpoint: The path to the pre-trained SAM.
-            device:  The device to load the model on (default: cuda).
-            object_detector: The object detector to be used for zero-shot object detection.
+            model_name: The name of the model to use.
+            device: The device to use.
 
         Returns:
             None
+        """
+        self.device = device
+        self.model = self.load_model()
+
+    @abstractmethod
+    def load_model(self):
+        """
+        Load the model.
+        """
+
+    @abstractmethod
+    def segment(self, image_np, prompt):
+        """
+        Run the model prediction.
+        """
+
+class SAM(SegmentationModel):
+    """
+    A class for the Segment Anything Model (SAM).
+    """
+    def __init__(
+        self,
+        model_type: str = 'vit_b',
+        checkpoint: str = 'sam_vit_b.pth',
+        device: str = 'cuda',
+    ):
+        """
+        Constructor for the SAM class.
         """
         self.model_type = model_type
         self.checkpoint = checkpoint
         self.device = device
-        self.object_detector = object_detector
 
+        super().__init__(device)
+
+    def load_model(self):
+        """
+        Load the model.
+        """
         self.sam = sam_model_registry[self.model_type](
             checkpoint=self.checkpoint)
         self.sam.to(self.device)
-
         self.predictor = SamPredictor(self.sam)
-
-    def set_object_detector(self, object_detector: ObjectDetector) -> None:
-        """
-        Sets the object detector to the SegMate instance.
-
-        Args:
-            object_detector: The object detector to be used for zero-shot object detection.
-
-        Returns:
-            None
-        """
-        self.object_detector = object_detector
-
-    def save_mask(self, binary_mask: np.ndarray, output_path: str) -> None:
-        """
-        Saves the resulting segmentation mask to the specified output path.
-
-        Args:
-            binary_mask: The binarized segmentation mask of the image.
-            output_path: The path to save the segmentation map.
-
-        Returns:
-            None
-        """
-        # saving the segmentation mask
-        cv2.imwrite(output_path, binary_mask)
-
+    
     def preprocess_input(
         self,
         image: np.ndarray,
@@ -109,7 +105,7 @@ class SegMate:
             bbox_prompt, dtype=torch.float, device=self.device)
 
         return input_image, bbox_prompt
-
+    
     def encode_input(
         self,
         input_image: torch.Tensor,
@@ -138,7 +134,7 @@ class SegMate:
         )
 
         return image_embedding, sparse_embeddings, dense_embeddings
-
+    
     def postprocess_mask(
         self,
         low_res_masks: torch.Tensor,
@@ -164,7 +160,7 @@ class SegMate:
         binary_mask = binary_mask.sum(axis=0).unsqueeze(0)
 
         return binary_mask
-
+    
     def generate_mask(
         self,
         image_embedding: torch.Tensor,
@@ -194,11 +190,10 @@ class SegMate:
         )
 
         return low_res_masks, iou_predictions
-
+    
     def segment(
         self,
         image: Union[str, np.ndarray],
-        text_prompt: tuple[str, float, float] = None,
         boxes_prompt: np.ndarray = None,
         points_prompt: tuple[np.ndarray, np.ndarray] = (None, None),
         mask_input: np.ndarray = None,
@@ -227,12 +222,6 @@ class SegMate:
 
         self.predictor.set_image(image)
 
-        # converting the text prompt to a list of bounding boxes with a zero-shot object detection
-        # model (Grounding Dino, etc.)
-        if text_prompt is not None:
-            text, box_threshold, text_threshold = text_prompt
-            boxes_prompt, _, _ = self.object_detector.predict(
-                image, text, box_threshold, text_threshold)
         if boxes_prompt is not None:
             boxes_prompt = torch.tensor(boxes_prompt).to(self.device)
             boxes_prompt = self.predictor.transform.apply_boxes_torch(
@@ -309,62 +298,6 @@ class SegMate:
 
         return masks
 
-    def visualize_automask(
-        self,
-        image: Union[str, np.ndarray],
-        masks: np.ndarray,
-        output_path: str = None
-    ) -> None:
-        """
-        Visualizes the segmentation mask on the image and saves the resulting visualization.
-
-        Args:
-            image: The image or the path to the image to be segmented.
-            mask: The segmentation mask to be visualized.
-            output_path: The path to save the resulting visualization.
-
-        Returns:
-            None
-        """
-        # loading the image if the input is a path to an image
-        if isinstance(image, str):
-            image = utils.load_image(image)
-
-        # Create a new figure with two axes
-        _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
-
-        # Display the first image on the first axis
-        plt.axis('off')
-        ax1.imshow(image)
-        ax1.set_title('Original Image')
-        ax1.axis('off')
-
-        # Display the second image on the second axis
-        plt.axis('off')
-        ax2.imshow(image)
-        utils.show_anns(masks, ax2)
-        ax2.set_title('Image with Masks')
-        ax2.axis('off')
-
-        if output_path is not None:
-            # Save the figure
-            plt.savefig(output_path, bbox_inches='tight')
-
-    def get_dataset(self, dataset: Dataset) -> torch.utils.data.DataLoader:
-        """
-        Prepare the data of the desired set.
-
-        Args:
-            dataset: The dataset to be prepared.
-
-        Returns:
-            The data loader of the desired set.
-        """
-
-        # creating the data loader
-        return torch.utils.data.DataLoader(
-            dataset, batch_size=1, shuffle=False)
-
     def forward_pass(
             self,
             input_image: np.ndarray,
@@ -424,7 +357,7 @@ class SegMate:
         self.sam.train()
 
         # creating the training and validation data loaders
-        train_loader = self.get_dataset(train_data)
+        train_loader = utils.get_dataset(train_data)
 
         for epoch in range(num_epochs):
             epoch_losses = []
