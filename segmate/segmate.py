@@ -17,6 +17,9 @@ from segment_anything.utils.transforms import ResizeLongestSide
 import segmate.utils as utils
 from segmate.object_detector import ObjectDetector
 
+# Imports for finetuning check
+from torchmetrics.classification import Dice
+
 
 class SegMate:
     """
@@ -449,3 +452,59 @@ class SegMate:
 
             print(f'EPOCH: {epoch}')
             print(f'Mean loss: {mean(epoch_losses)}')
+            
+    def testing(
+            self,
+            test_data: Dataset,
+            original_input_size: int,
+            criterion: torch.nn
+        ) -> None:
+        """
+        Fine-tunes the SAM model using the provided training.
+        Args:
+            train_data: The training data to be used for fine-tuning.
+            original_input_size: The size of the original input image.
+            criterion: The loss function to be used for fine-tuning.
+            optimizer: The optimizer to be used for fine-tuning.
+            num_epochs: The number of epochs to be used for fine-tuning.
+        Returns:
+            None
+        """
+        # setting the model to training mode
+        self.sam.eval()
+
+        # Creating the testing data loader
+        test_loader = self.get_dataset(test_data)
+
+        count = 0
+        dice = Dice(average='micro').to('cuda')
+
+        test_losses = []
+        test_dice_loss = []
+        with torch.no_grad():
+            for input_image, box_prompt, gt_mask in tqdm(test_loader):
+                if box_prompt.shape[1] == 0:
+                    print('NO BOX PROMPT')
+                    continue
+
+                if gt_mask.shape[3] != original_input_size:
+                    print('WRONG SHAPE')
+                    continue
+
+                # forward pass
+                pred_mask = self.forward_pass(
+                    input_image, box_prompt, original_input_size=original_input_size)
+
+                loss = criterion(pred_mask, gt_mask)
+                test_losses.append(loss.item())
+
+                dice_loss = dice(pred_mask.to(torch.int64), gt_mask.to(torch.int64))
+                test_dice_loss.append(dice_loss.item())
+
+                count = count + 1
+
+        mean_test_loss = mean(test_losses)
+        print(f"Mean Test Loss: {mean_test_loss} for {count} samples")
+
+        mean_dice_test_loss = mean(test_dice_loss)
+        print(f"Mean Test Sørensen–Dice Coefficient: {mean_dice_test_loss} for {count} samples")
