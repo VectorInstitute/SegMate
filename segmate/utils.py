@@ -287,6 +287,7 @@ def save_mask(mask: np.ndarray, output_path: str) -> None:
 def visualize_automask(
     image: Union[str, np.ndarray],
     masks: np.ndarray,
+    mask_only: bool = True,
     output_path: str = None
 ) -> None:
     """
@@ -315,8 +316,11 @@ def visualize_automask(
 
     # Display the second image on the second axis
     plt.axis('off')
-    ax2.imshow(image)
-    show_anns(masks, ax2)
+    if mask_only: 
+        ax2.imshow(image)
+        show_anns(masks, ax2)
+    else: 
+        ax2.imshow(masks)
     ax2.set_title('Image with Masks')
     ax2.axis('off')
 
