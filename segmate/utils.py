@@ -2,6 +2,7 @@
 This file contains utility functions for the SegMate package.
 """
 from PIL import Image
+import os
 
 import cv2
 import numpy as np
@@ -371,14 +372,14 @@ def convert_PIL_to_numpy(image, format):
 
     return image
 
-def read_image_ovseg(file_name, format=None):
+def read_image_ovseg(file, format=None):
     """
     Source: https://detectron2.readthedocs.io/en/latest/_modules/detectron2/data/detection_utils.html
     Read an image into the given format.
     Will apply rotation and flipping if the image has such exif information.
 
     Args:
-        file_name (str): image file path
+        file_name (str): image file path or could be PIL image
         format (str): one of the supported image modes in PIL, or "BGR" or "YUV-BT.601".
 
     Returns:
@@ -386,11 +387,15 @@ def read_image_ovseg(file_name, format=None):
             an HWC image in the given format, which is 0-255, uint8 for
             supported image modes in PIL or "BGR"; float (0-1 for Y) for YUV-BT.601.
     """
-    with PathManager.open(file_name, "rb") as f:
-        image = Image.open(f)
+#     if os.path.exists(file) and os.path.isfile(path):
+#         with PathManager.open(file, "rb") as f:
+#             image = Image.open(f)
+#             print(type(image))
 
-#         # work around this bug: https://github.com/python-pillow/Pillow/issues/3973
-#         image = _apply_exif_orientation(image)
-        return convert_PIL_to_numpy(image, format)
+#     #         # work around this bug: https://github.com/python-pillow/Pillow/issues/3973
+#     #         image = _apply_exif_orientation(image)
+#             return convert_PIL_to_numpy(image, format)
+#     else: 
+    return convert_PIL_to_numpy(file, format)
     
 

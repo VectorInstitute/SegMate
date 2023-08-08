@@ -17,6 +17,11 @@ from segment_anything.utils.transforms import ResizeLongestSide
 import segmate.utils as utils
 from segmate.object_detector import ObjectDetector
 
+from torchmetrics.classification import Dice
+from torchmetrics.functional.detection import intersection_over_union
+from sklearn.metrics import jaccard_score
+
+
 
 class SegMate:
     """
@@ -438,9 +443,12 @@ class SegMate:
 
         # creating the training and validation data loaders
         train_loader = self.get_dataset(train_data)
+        
+#         dice = Dice(average='micro')
 
         for epoch in range(num_epochs):
             epoch_losses = []
+#             epoch_dice_loss = []
             for input_image, box_prompt, gt_mask in tqdm(train_loader):
                 if box_prompt.shape[1] == 0:
                     continue
@@ -451,6 +459,7 @@ class SegMate:
 
                 # compute loss
                 loss = criterion(pred_mask, gt_mask)
+#                 dice_loss = dice(pred_mask, pred_mask)
 
                 # backward pass (compute gradients of parameters w.r.t. loss)
                 optimizer.zero_grad()
@@ -459,6 +468,94 @@ class SegMate:
                 # optimize
                 optimizer.step()
                 epoch_losses.append(loss.item())
+#                 epoch_dice_loss.append(dice_loss)
 
             print(f'EPOCH: {epoch}')
             print(f'Mean loss: {mean(epoch_losses)}')
+            
+#             print(f'Mean  dice loss: {mean(epoch_dice_loss)}')
+            
+    def testing(
+            self,
+            test_data: Dataset,
+            original_input_size: int,
+            criterion: torch.nn
+        ) -> None:
+        """
+        Fine-tunes the SAM model using the provided training.
+
+        Args:
+            train_data: The training data to be used for fine-tuning.
+            original_input_size: The size of the original input image.
+            criterion: The loss function to be used for fine-tuning.
+            optimizer: The optimizer to be used for fine-tuning.
+            num_epochs: The number of epochs to be used for fine-tuning.
+
+        Returns:
+            None
+        """
+        # setting the model to training mode
+        self.sam.eval()
+
+        # Creating the testing data loader
+        test_loader = self.get_dataset(test_data)
+        
+        count = 0
+        dice = Dice(average='micro').to('cuda')
+
+        test_losses = []
+        test_dice_loss = []
+#         test_jaccard_score = []
+        with torch.no_grad():
+            for input_image, box_prompt, gt_mask in tqdm(test_loader):
+                if box_prompt.shape[1] == 0:
+                    print('NO BOX PROMPT')
+                    continue
+                    
+#                 print(f'Input Image Shape: {input_image.shape}')
+                    
+#                 print(f'Ground Truth Mask Shape: {gt_mask.shape}')
+                    
+                if gt_mask.shape[3] != original_input_size:
+                    print('WRONG SHAPE')
+                    continue
+                    
+#                 print(gt_mask.shape[3])
+
+                # forward pass
+                pred_mask = self.forward_pass(
+                    input_image, box_prompt, original_input_size=original_input_size)
+
+                # compute loss
+#                 print(pred_mask.shape)
+#                 print(gt_mask.shape)
+#                 print(pred_mask)
+    
+#                 print(gt_mask)
+                
+#                 if pred_mask.shape == gt_mask.shape: 
+                loss = criterion(pred_mask, gt_mask)
+                test_losses.append(loss.item())
+
+#                     print(f'mse loss: {loss.item()}')
+
+                dice_loss = dice(pred_mask.to(torch.int64), gt_mask.to(torch.int64))
+                test_dice_loss.append(dice_loss.item())
+            
+#                     jc = jaccard_score(pred_mask.to(torch.int64).cpu().numpy(), gt_mask.to(torch.int64).cpu().numpy())
+#                     test_jaccard_score.append(jc.item())
+                    
+#                     print(f'jaccard_score loss: {jc.item()}')
+                    
+                count = count + 1
+                    
+#                     print('------------------')
+
+        mean_test_loss = mean(test_losses)
+        print(f"Mean Test Loss: {mean_test_loss} for {count} samples")
+        
+        mean_dice_test_loss = mean(test_dice_loss)
+        print(f"Mean Test DICE Loss: {mean_dice_test_loss} for {count} samples")
+        
+#         mean_test_jaccard_score = mean(test_jaccard_score)
+#         print(f"Mean Test DICE Loss: {mean_test_jaccard_score} for {count} samples")
