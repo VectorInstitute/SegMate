@@ -25,7 +25,7 @@ from mask2former.data.datasets.register_ade20k_panoptic import ADE20K_150_CATEGO
 
 from detectron2.config import instantiate
 from detectron2.data import MetadataCatalog
-from detectron2.data import detection_utils as utils
+from detectron2.data import detection_utils as d2utils
 from detectron2.data import transforms as T
 from detectron2.data.datasets.builtin_meta import COCO_CATEGORIES
 from detectron2.evaluation import inference_context
