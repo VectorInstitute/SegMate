@@ -270,18 +270,18 @@ def convert_bboxes2center_points(bboxes: np.ndarray) -> np.ndarray:
 
 
 def save_mask(mask: np.ndarray, output_path: str) -> None:
-        """
-        Saves the segmentation mask to the specified output path.
+    """
+    Saves the segmentation mask to the specified output path.
 
-        Args:
-            binary_mask: The binarized segmentation mask of the image.
-            output_path: The path to save the segmentation map.
+    Args:
+        binary_mask: The binarized segmentation mask of the image.
+        output_path: The path to save the segmentation map.
 
-        Returns:
-            None
-        """
-        # saving the segmentation mask
-        cv2.imwrite(output_path, mask)
+    Returns:
+        None
+    """
+    # saving the segmentation mask
+    cv2.imwrite(output_path, mask)
 
 
 def visualize_automask(
@@ -325,17 +325,17 @@ def visualize_automask(
         plt.savefig(output_path, bbox_inches='tight')
 
 
-def get_dataset(dataset: Dataset) -> torch.utils.data.DataLoader:
-    """
-    Prepare the data of the desired set.
+# def get_dataset(dataset: Dataset) -> torch.utils.data.DataLoader:
+#     """
+#     Prepare the data of the desired set.
 
-    Args:
-        dataset: The dataset to be prepared.
+#     Args:
+#         dataset: The dataset to be prepared.
 
-    Returns:
-        The data loader of the desired set.
-    """
+#     Returns:
+#         The data loader of the desired set.
+#     """
 
-    # creating the data loader
-    return torch.utils.data.DataLoader(
-        dataset, batch_size=1, shuffle=False)
+#     # creating the data loader
+#     return torch.utils.data.DataLoader(
+#         dataset, batch_size=1, shuffle=False)
