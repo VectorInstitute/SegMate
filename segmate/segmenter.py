@@ -357,24 +357,24 @@ class SAM(SegmentationModel):
         for epoch in range(num_epochs):
             epoch_losses = []
             for input_image, box_prompt, gt_mask in tqdm(train_loader):
-#                 try:
+                try:
                     # forward pass
-                pred_mask = self.forward_pass(
-                    input_image, box_prompt, original_input_size=original_input_size)
+                    pred_mask = self.forward_pass(
+                        input_image, box_prompt, original_input_size=original_input_size)
 
-                # compute loss
-                loss = criterion(pred_mask, gt_mask)
+                    # compute loss
+                    loss = criterion(pred_mask, gt_mask)
 
-                # backward pass (compute gradients of parameters w.r.t. loss)
-                optimizer.zero_grad()
-                loss.backward()
+                    # backward pass (compute gradients of parameters w.r.t. loss)
+                    optimizer.zero_grad()
+                    loss.backward()
 
-                # optimize
-                optimizer.step()
-                epoch_losses.append(loss.item())
-#                 except:
-#                     print("No bounding box found!")
-#                     continue
+                    # optimize
+                    optimizer.step()
+                    epoch_losses.append(loss.item())
+                except:
+                    print("No bounding box found!")
+                    continue
 
             print(f'EPOCH: {epoch}')
             print(f'Mean loss: {mean(epoch_losses)}')
