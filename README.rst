@@ -37,7 +37,7 @@ Installation
 
 First, install ``groundingdino`` from its repository, this is a dependency for ``segmate``:
 
-**NOTE**: There is an issue with the setup script in the GroundingDINO repository causing it not able to install ``torch`` properly, please `manually install PyTorch <https://pytorch.org/get-started/locally/>`_ for now 
+**NOTE**: There is an issue with the setup script in the GroundingDINO repository causing it not able to install ``torch`` properly, please `manually install PyTorch <https://pytorch.org/get-started/locally/>`_ for now. For other issues, refer to the `installation guide <https://github.com/IDEA-Research/GroundingDINO/tree/main#hammer_and_wrench-install>`_: 
 
 .. code-block:: console
 
@@ -67,7 +67,7 @@ To use the provided code snippets, follow the steps below:
 
     # Model checkpoint path for GroundingDINO is optional. If no path provided, it will download from HuggingFace
     od = GroundingDINO(device='cuda', ckpt_path='PATH_TO_CHECKPOINT')
-    sm = SegMate(model_type='MODEL_TYPE', checkpoint='PATH_to_CHECKPOINT', device='cuda')
+    sm = SAM(model_type='MODEL_TYPE', checkpoint='PATH_to_CHECKPOINT', device='cuda')
 
 
 2. Perform segmentation with bounding box prompts:
