@@ -8,7 +8,7 @@ SegMate: A Segmentation Toolkit
         :target: https://pypi.org/project/segmate
 
 .. image:: https://readthedocs.org/projects/segmate/badge/?version=latest
-        :target: https://hnp.readthedocs.io/en/latest/?version=latest
+        :target: https://segmate.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
 .. image:: https://img.shields.io/pypi/l/segmate.svg
