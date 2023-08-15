@@ -315,9 +315,6 @@ class SAM(SegmentationModel):
         Returns:
             binary_mask: The binarized segmentation mask of the image.
         """
-        # preprocessing and transforming the image and bounding box prompt(s) with sam's functions
-        # input_image, bbox_prompt = self.preprocess_input(image, bbox_prompt)
-
         # encoding the image and the prompt with sam's encoders
         image_embedding, sparse_embeddings, dense_embeddings = self.encode_input(
             input_image, bbox_prompt)
@@ -338,6 +335,7 @@ class SAM(SegmentationModel):
             original_input_size: int,
             criterion: torch.nn,
             optimizer: torch.optim,
+            train_loader: torch.utils.data.DataLoader,
             num_epochs: int = 10
         ) -> None:
         """
@@ -356,29 +354,27 @@ class SAM(SegmentationModel):
         # setting the model to training mode
         self.sam.train()
 
-        # creating the training and validation data loaders
-        train_loader = utils.get_dataset(train_data)
-
         for epoch in range(num_epochs):
             epoch_losses = []
             for input_image, box_prompt, gt_mask in tqdm(train_loader):
-                if box_prompt.shape[1] == 0:
+                try:
+                    # forward pass
+                    pred_mask = self.forward_pass(
+                        input_image, box_prompt, original_input_size=original_input_size)
+
+                    # compute loss
+                    loss = criterion(pred_mask, gt_mask)
+
+                    # backward pass (compute gradients of parameters w.r.t. loss)
+                    optimizer.zero_grad()
+                    loss.backward()
+
+                    # optimize
+                    optimizer.step()
+                    epoch_losses.append(loss.item())
+                except:
+                    print("No bounding box found!")
                     continue
-
-                # forward pass
-                pred_mask = self.forward_pass(
-                    input_image, box_prompt, original_input_size=original_input_size)
-
-                # compute loss
-                loss = criterion(pred_mask, gt_mask)
-
-                # backward pass (compute gradients of parameters w.r.t. loss)
-                optimizer.zero_grad()
-                loss.backward()
-
-                # optimize
-                optimizer.step()
-                epoch_losses.append(loss.item())
 
             print(f'EPOCH: {epoch}')
             print(f'Mean loss: {mean(epoch_losses)}')

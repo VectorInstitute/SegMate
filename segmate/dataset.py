@@ -22,7 +22,7 @@ class BISDataset(Dataset):
         dataset: HFDataset,
         preprocess: Callable,
         img_size: int,
-        device: str
+        device: str,
     ) -> None:
         """
         Constructor for the BISDataset class.
