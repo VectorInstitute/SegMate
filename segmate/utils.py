@@ -2,18 +2,13 @@
 This file contains utility functions for the SegMate package.
 """
 from PIL import Image
+from typing import Union
 
 import cv2
 import numpy as np
 from pycocotools import mask as coco_mask
 import matplotlib.pyplot as plt
 from matplotlib import patches
-import torch
-import groundingdino.datasets.transforms as T
-from groundingdino.models import build_model
-from groundingdino.util.slconfig import SLConfig
-from groundingdino.util.utils import clean_state_dict
-from huggingface_hub import hf_hub_download
 
 
 def show_bounding_boxes(image: np.ndarray, bounding_boxes: np.ndarray) -> None:
@@ -134,65 +129,6 @@ def show_anns(anns: list, ax: plt.axes) -> None:
     ax.imshow(img)
 
 
-def transform_image(image: Image) -> torch.Tensor:
-    """
-    Transforms an image using standard transformations for image-based models.
-
-    Parameters:
-    image (Image): The PIL Image to be transformed.
-
-    Returns:
-    torch.Tensor: The transformed image as a tensor.
-    """
-    transform = T.Compose([
-        T.RandomResize([800], max_size=1333),
-        T.ToTensor(),
-        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    ])
-    image_transformed, _ = transform(image, None)
-    return image_transformed
-
-
-def load_model_hf(
-        repo_id: str,
-        filename: str,
-        ckpt_config_filename: str,
-        device: str = 'cpu'
-    ) -> torch.nn.Module:
-    """
-    Loads a model from HuggingFace Model Hub.
-
-    Parameters:
-    repo_id (str): Repository ID on HuggingFace Model Hub.
-    filename (str): Name of the model file in the repository.
-    ckpt_config_filename (str): Name of the config file for the model in the repository.
-    device (str): Device to load the model onto. Default is 'cpu'.
-
-    Returns:
-    torch.nn.Module: The loaded model.
-    """
-    # Ensure the repo ID and filenames are valid
-    assert isinstance(repo_id, str) and repo_id, "Invalid repository ID"
-    assert isinstance(filename, str) and filename, "Invalid model filename"
-    assert isinstance(ckpt_config_filename,
-                      str) and ckpt_config_filename, "Invalid config filename"
-
-    # Download the config file and build the model from it
-    cache_config_file = hf_hub_download(
-        repo_id=repo_id, filename=ckpt_config_filename)
-    args = SLConfig.fromfile(cache_config_file)
-    model = build_model(args)
-    model.to(device)
-
-    # Download the model checkpoint and load it into the model
-    cache_file = hf_hub_download(repo_id=repo_id, filename=filename)
-    checkpoint = torch.load(cache_file, map_location=device)
-    model.load_state_dict(clean_state_dict(checkpoint['model']), strict=False)
-    model.eval()
-
-    return model
-
-
 def load_image(image_path: str) -> np.ndarray:
     """
     Loads the image.
@@ -210,29 +146,64 @@ def load_image(image_path: str) -> np.ndarray:
     return image
 
 
-def show_image(image: np.ndarray, color_map: str='binary_r', show_axis: bool=False) -> None:
+def show_image(
+    img: np.ndarray,
+    img_section: str=None,
+    size: int=8,
+    show_axis: bool=False, 
+    inter: int=500,
+    points: tuple[list, list]=(None, None)
+) -> None:
     """
-    Shows the image.
+    Shows the image and points if provided.
 
     Args:
-        image (numpy.ndarray): The image to be shown.
-        color_map (str): The color map to be used.
+        img (numpy.ndarray): The image to be shown.
+        img_section (str): Show only a quarter of the image, options are 'top_left', 'top_right',
+            'bottom_left', 'bottom_right'.
+        size (int): Size of plot.
         show_axis (bool): Whether to show the axis or not.
+        inter (int): Tick interval for axis.
+        points (tuple): Tuple of point coordinates and labels to be plotted on the image,
+            label '1' stands for foreground points, label '0' stands for background points.
     """
-    # showing the image
-    plt.imshow(image, cmap=color_map)
+    height, width, _ = img.shape
+    
+    img_list = {
+        "top_left": img[:height//2, :width//2, :],
+        "top_right": img[:height//2, width//2:, :],
+        "bottom_left": img[height//2:, :width//2, :],
+        "bottom_right": img[height//2:, width//2:, :]
+    }
+    
+    if img_section:
+        img = img_list[img_section]
+        height, width, _ = img.shape
+        
+    f = plt.figure(figsize=(size, size))
+    plt.xticks(np.arange(0, width, inter))
+    plt.yticks(np.arange(0, height, inter))
+    
+    point_coords, point_labels = points
+    if point_coords is not None and point_labels is not None:
+        for pt, lbl in zip(point_coords, point_labels):
+            style = "bo" if lbl == 1 else "ro"
+            plt.plot(pt[0], pt[1], style)
+    
+    plt.imshow(img)
     if not show_axis:
         plt.axis('off')
     plt.show()
 
 
-def show_masks(image: np.ndarray, masks: np.ndarray) -> None:
+def show_masks(image: np.ndarray, masks: np.ndarray, size: int=None) -> None:
     """
     Shows the masks.
 
     Args:
         image (numpy.ndarray): The image to be shown.
         masks (numpy.ndarray): The masks to be shown.
+        int (int): The size of the plot.
     """
     image_pil = Image.fromarray(image)
     # Adjusted for single channel
@@ -245,6 +216,9 @@ def show_masks(image: np.ndarray, masks: np.ndarray) -> None:
 
     # Normalize mask_overlay to be in [0, 255]
     mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
+
+    if size:
+        plt.figure(figsize=(size, size))
 
     plt.imshow(image_pil)
     plt.imshow(mask_overlay, cmap='viridis', alpha=0.4)  # Overlay the mask with some transparency
@@ -309,3 +283,116 @@ def convert_bboxes2center_points(bboxes: np.ndarray) -> np.ndarray:
     center_points[:, 1] = (bboxes[:, 1] + bboxes[:, 3]) / 2
 
     return center_points
+
+
+def save_mask(mask: np.ndarray, output_path: str) -> None:
+    """
+    Saves the segmentation mask to the specified output path.
+
+    Args:
+        binary_mask: The binarized segmentation mask of the image.
+        output_path: The path to save the segmentation map.
+
+    Returns:
+        None
+    """
+    # saving the segmentation mask
+    cv2.imwrite(output_path, mask)
+
+
+def visualize_automask(
+    image: Union[str, np.ndarray],
+    masks: np.ndarray,
+    output_path: str = None
+) -> None:
+    """
+    Visualizes the segmentation mask on the image and saves the resulting visualization.
+
+    Args:
+        image: The image or the path to the image to be segmented.
+        mask: The segmentation mask to be visualized.
+        output_path: The path to save the resulting visualization.
+
+    Returns:
+        None
+    """
+    # loading the image if the input is a path to an image
+    if isinstance(image, str):
+        image = load_image(image)
+
+    # Create a new figure with two axes
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+
+    # Display the first image on the first axis
+    plt.axis('off')
+    ax1.imshow(image)
+    ax1.set_title('Original Image')
+    ax1.axis('off')
+
+    # Display the second image on the second axis
+    plt.axis('off')
+    ax2.imshow(image)
+    show_anns(masks, ax2)
+    ax2.set_title('Image with Masks')
+    ax2.axis('off')
+
+    if output_path is not None:
+        # Save the figure
+        plt.savefig(output_path, bbox_inches='tight')
+
+
+def get_masks_size(masks: np.ndarray) -> float:
+    """
+    Calculates the relative size of the masks.
+
+    Args:
+        masks (np.ndarray): The generated segmentation masks.
+
+    Returns:
+        mask_relative_size (float): The relative size of the mask.
+    """
+    mask_overlay = np.zeros_like(masks[0, 0, ...], dtype=np.uint8)
+    for mask in masks:
+        mask = mask[0, :, :]
+        # Stack the masks
+        mask_overlay += (mask > 0).astype(np.uint8)
+
+    mask_relative_size = np.count_nonzero(mask_overlay) / masks[0, 0, ...].size * 10000
+    return mask_relative_size
+
+
+def plot_mask_diff(masks_1: np.ndarray, masks_2: np.ndarray, size: int=None) -> None:
+    """
+    Plots the difference between two masks.
+
+    Args:
+        masks_1 (np.ndarray): The first mask.
+        masks_2 (np.ndarray): The second mask.
+        size (int): The size of the plot.
+
+    Returns:
+        None
+    """
+    if masks_1[0, ...].shape != masks_2[0, ...].shape:
+        print("Mask size mismatch!")
+        return
+    mask_overlay_1 = np.zeros_like(masks_1[0, 0, ...], dtype=np.uint8)
+    mask_overlay_2 = np.zeros_like(masks_2[0, 0, ...], dtype=np.uint8)
+    
+    for mask in masks_1:
+        mask = mask[0, :, :]
+        mask_overlay_1 += (mask > 0).astype(np.uint8)
+    mask_overlay_1 = (mask_overlay_1 > 0) * 1
+        
+    for mask in masks_2:
+        mask = mask[0, :, :]
+        mask_overlay_2 += (mask > 0).astype(np.uint8)
+    mask_overlay_2 = (mask_overlay_2 > 0) * 2
+    
+    mask_diff_overlay = (mask_overlay_1 + mask_overlay_2) * 127
+    
+    if size:
+        plt.figure(figsize=(size, size))
+    plt.imshow(mask_diff_overlay, cmap='viridis')  # Overlay the mask with some transparency
+    plt.axis('off')
+    plt.show()

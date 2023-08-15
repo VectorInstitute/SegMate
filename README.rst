@@ -1,14 +1,14 @@
 .. start-in-sphinx-home-docs
 
 =========================================
-SegMate: A Segment Anything Model Toolkit
+SegMate: A Segmentation Toolkit
 =========================================
 
 .. image:: https://img.shields.io/pypi/v/segmate.svg
         :target: https://pypi.org/project/segmate
 
 .. image:: https://readthedocs.org/projects/segmate/badge/?version=latest
-        :target: https://hnp.readthedocs.io/en/latest/?version=latest
+        :target: https://segmate.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
 .. image:: https://img.shields.io/pypi/l/segmate.svg
@@ -26,6 +26,7 @@ Features
 - **Automatic masking** without the need for prompts
 - **Finetune** SAM on custom datasets
 - `GroundingDINO <https://github.com/IDEA-Research/GroundingDINO/tree/main>`_ **integration** for text prompt segmentation
+- Training a **custom decoder** to auto segment a specific type of object
 
 .. end-in-sphinx-home-docs
 
@@ -36,7 +37,7 @@ Installation
 
 First, install ``groundingdino`` from its repository, this is a dependency for ``segmate``:
 
-**NOTE**: There is an issue with the setup script in the GroundingDINO repository causing it not able to install ``torch`` properly, please `manually install PyTorch <https://pytorch.org/get-started/locally/>`_ for now 
+**NOTE**: There is an issue with the setup script in the GroundingDINO repository causing it not able to install ``torch`` properly, please `manually install PyTorch <https://pytorch.org/get-started/locally/>`_ for now. For other issues, refer to the `installation guide <https://github.com/IDEA-Research/GroundingDINO/tree/main#hammer_and_wrench-install>`_: 
 
 .. code-block:: console
 
@@ -60,12 +61,13 @@ To use the provided code snippets, follow the steps below:
 
     import torch
     
-    from segmate.segmate import SegMate
+    from segmate.segmenter import SAM
     from segmate.object_detector import GroundingDINO
     import segmate.utils as utils
 
-    od = GroundingDINO()
-    sm = SegMate(model_type='MODEL_TYPE', checkpoint='PATH_to_MODEL', device='cuda', object_detector=od)
+    # Model checkpoint path for GroundingDINO is optional. If no path provided, it will download from HuggingFace
+    od = GroundingDINO(device='cuda', ckpt_path='PATH_TO_CHECKPOINT')
+    sm = SAM(model_type='MODEL_TYPE', checkpoint='PATH_to_CHECKPOINT', device='cuda')
 
 
 2. Perform segmentation with bounding box prompts:
@@ -73,7 +75,7 @@ To use the provided code snippets, follow the steps below:
 .. code-block:: python
 
     masks = sm.segment(image=input_image, boxes_prompt=bbox)
-    utils.show_masks(masks)
+    utils.show_masks(image, masks)
 
 .. end-in-sphinx-getting-started
 
