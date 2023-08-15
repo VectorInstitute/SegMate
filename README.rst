@@ -26,6 +26,7 @@ Features
 - **Automatic masking** without the need for prompts
 - **Finetune** SAM on custom datasets
 - `GroundingDINO <https://github.com/IDEA-Research/GroundingDINO/tree/main>`_ **integration** for text prompt segmentation
+- Training a **custom decoder** to auto segment a specific type of object
 
 .. end-in-sphinx-home-docs
 
@@ -60,20 +61,21 @@ To use the provided code snippets, follow the steps below:
 
     import torch
     
-    from segmate.segmate import SegMate
+    from segmate.segmenter import SAM
     from segmate.object_detector import GroundingDINO
     import segmate.utils as utils
 
-    od = GroundingDINO(device='cuda')
-    sm = SegMate(model_type='MODEL_TYPE', checkpoint='PATH_to_MODEL', device='cuda')
+    # Model checkpoint path for GroundingDINO is optional. If no path provided, it will download from HuggingFace
+    od = GroundingDINO(device='cuda', ckpt_path='PATH_TO_CHECKPOINT')
+    sm = SegMate(model_type='MODEL_TYPE', checkpoint='PATH_to_CHECKPOINT', device='cuda')
 
 
-1. Perform segmentation with bounding box prompts:
+2. Perform segmentation with bounding box prompts:
 
 .. code-block:: python
 
     masks = sm.segment(image=input_image, boxes_prompt=bbox)
-    utils.show_masks(masks)
+    utils.show_masks(image, masks)
 
 .. end-in-sphinx-getting-started
 
