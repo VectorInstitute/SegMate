@@ -21,7 +21,7 @@ class ObjectDetector(ABC):
     """
     An abstract class for all object detectors.
     """
-    def __init__(self, device):
+    def __init__(self, device, ckpt_path):
         """
         Constructor for the ObjectDetector class.
 
@@ -32,10 +32,10 @@ class ObjectDetector(ABC):
             None
         """
         self.device = device
-        self.model = self.load_model()
+        self.model = self.load_model(ckpt_path)
 
     @abstractmethod
-    def load_model(self):
+    def load_model(self, ckpt_path):
         """
         Load the model.
         """
@@ -53,7 +53,8 @@ class GroundingDINO(ObjectDetector):
     """
     def __init__(
             self,
-            device:str="cuda"
+            device:str="cuda",
+            ckpt_path:str=None
         ) -> None:
         """
         Constructor for the GroundingDINO class.
@@ -64,7 +65,7 @@ class GroundingDINO(ObjectDetector):
         Returns:
             None
         """
-        super().__init__(device)
+        super().__init__(device, ckpt_path)
 
     def load_model(self, ckpt_path=None) -> torch.nn.Module:
         """
