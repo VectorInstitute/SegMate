@@ -178,10 +178,11 @@ def show_image(
     
     if img_section:
         img = img_list[img_section]
+        height, width, _ = img.shape
         
     f = plt.figure(figsize=(size, size))
-    plt.xticks(np.arange(0, width/2, inter))
-    plt.yticks(np.arange(0, height/2, inter))
+    plt.xticks(np.arange(0, width, inter))
+    plt.yticks(np.arange(0, height, inter))
     
     point_coords, point_labels = points
     if point_coords is not None and point_labels is not None:
