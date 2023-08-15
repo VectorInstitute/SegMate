@@ -14,6 +14,13 @@ from matplotlib import patches
 def show_bounding_boxes(image: np.ndarray, bounding_boxes: np.ndarray) -> None:
     """
     Displays an image with bounding boxes overlaid on top of it.
+
+    Args:
+        image (numpy.ndarray): The image to display.
+        bounding_boxes (numpy.ndarray): The bounding boxes to overlay on top of the image.
+
+    Returns:
+        None
     """
     # Create a figure and axes
     _, ax = plt.subplots(1)

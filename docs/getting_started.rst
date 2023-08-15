@@ -15,7 +15,7 @@ Getting Started
     utils.show_masks(masks)
 
 
-1. Perform segmentation with point prompts:
+4. Perform segmentation with point prompts:
 
 .. code-block:: python
 
