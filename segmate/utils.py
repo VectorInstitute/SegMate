@@ -9,8 +9,6 @@ import numpy as np
 from pycocotools import mask as coco_mask
 import matplotlib.pyplot as plt
 from matplotlib import patches
-import torch
-from torch.utils.data import Dataset
 
 
 def show_bounding_boxes(image: np.ndarray, bounding_boxes: np.ndarray) -> None:
@@ -148,29 +146,63 @@ def load_image(image_path: str) -> np.ndarray:
     return image
 
 
-def show_image(image: np.ndarray, color_map: str='binary_r', show_axis: bool=False) -> None:
+def show_image(
+    img: np.ndarray,
+    img_section: str=None,
+    size: int=8,
+    show_axis: bool=False, 
+    inter: int=500,
+    points: tuple[list, list]=(None, None)
+) -> None:
     """
-    Shows the image.
+    Shows the image and points if provided.
 
     Args:
-        image (numpy.ndarray): The image to be shown.
-        color_map (str): The color map to be used.
+        img (numpy.ndarray): The image to be shown.
+        img_section (str): Show only a quarter of the image, options are 'top_left', 'top_right',
+            'bottom_left', 'bottom_right'.
+        size (int): Size of plot.
         show_axis (bool): Whether to show the axis or not.
+        inter (int): Tick interval for axis.
+        points (tuple): Tuple of point coordinates and labels to be plotted on the image,
+            label '1' stands for foreground points, label '0' stands for background points.
     """
-    # showing the image
-    plt.imshow(image, cmap=color_map)
+    height, width, _ = img.shape
+    
+    img_list = {
+        "top_left": img[:height//2, :width//2, :],
+        "top_right": img[:height//2, width//2:, :],
+        "bottom_left": img[height//2:, :width//2, :],
+        "bottom_right": img[height//2:, width//2:, :]
+    }
+    
+    if img_section:
+        img = img_list[img_section]
+        
+    f = plt.figure(figsize=(size, size))
+    plt.xticks(np.arange(0, width/2, inter))
+    plt.yticks(np.arange(0, height/2, inter))
+    
+    point_coords, point_labels = points
+    if point_coords is not None and point_labels is not None:
+        for pt, lbl in zip(point_coords, point_labels):
+            style = "bo" if lbl == 1 else "ro"
+            plt.plot(pt[0], pt[1], style)
+    
+    plt.imshow(img)
     if not show_axis:
         plt.axis('off')
     plt.show()
 
 
-def show_masks(image: np.ndarray, masks: np.ndarray) -> None:
+def show_masks(image: np.ndarray, masks: np.ndarray, size: int=None) -> None:
     """
     Shows the masks.
 
     Args:
         image (numpy.ndarray): The image to be shown.
         masks (numpy.ndarray): The masks to be shown.
+        int (int): The size of the plot.
     """
     image_pil = Image.fromarray(image)
     # Adjusted for single channel
@@ -183,6 +215,9 @@ def show_masks(image: np.ndarray, masks: np.ndarray) -> None:
 
     # Normalize mask_overlay to be in [0, 255]
     mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
+
+    if size:
+        plt.figure(figsize=(size, size))
 
     plt.imshow(image_pil)
     plt.imshow(mask_overlay, cmap='viridis', alpha=0.4)  # Overlay the mask with some transparency
@@ -305,17 +340,55 @@ def visualize_automask(
         plt.savefig(output_path, bbox_inches='tight')
 
 
-# def get_dataset(dataset: Dataset) -> torch.utils.data.DataLoader:
-#     """
-#     Prepare the data of the desired set.
+def get_masks_size(masks: np.ndarray) -> float:
+    """
+    Calculates the relative size of the masks.
 
-#     Args:
-#         dataset: The dataset to be prepared.
+    Args:
+        masks (np.ndarray): The generated segmentation masks.
 
-#     Returns:
-#         The data loader of the desired set.
-#     """
+    Returns:
+        mask_relative_size (float): The relative size of the mask.
+    """
+    mask_overlay = np.zeros_like(masks[0, 0, ...], dtype=np.uint8)
+    for mask in masks:
+        mask = mask[0, :, :]
+        # Stack the masks
+        mask_overlay += (mask > 0).astype(np.uint8)
 
-#     # creating the data loader
-#     return torch.utils.data.DataLoader(
-#         dataset, batch_size=1, shuffle=False)
+    mask_relative_size = np.count_nonzero(mask_overlay) / masks[0, 0, ...].size * 10000
+    return mask_relative_size
+
+
+def plot_mask_diff(masks_1: np.ndarray, masks_2: np.ndarray) -> None:
+    """
+    Plots the difference between two masks.
+
+    Args:
+        masks_1 (np.ndarray): The first mask.
+        masks_2 (np.ndarray): The second mask.
+
+    Returns:
+        None
+    """
+    if masks_1[0, ...].shape != masks_2[0, ...].shape:
+        print("Mask size mismatch!")
+        return
+    mask_overlay_1 = np.zeros_like(masks_1[0, 0, ...], dtype=np.uint8)
+    mask_overlay_2 = np.zeros_like(masks_2[0, 0, ...], dtype=np.uint8)
+    
+    for mask in masks_1:
+        mask = mask[0, :, :]
+        mask_overlay_1 += (mask > 0).astype(np.uint8)
+    mask_overlay_1 = (mask_overlay_1 > 0) * 1
+        
+    for mask in masks_2:
+        mask = mask[0, :, :]
+        mask_overlay_2 += (mask > 0).astype(np.uint8)
+    mask_overlay_2 = (mask_overlay_2 > 0) * 2
+    
+    mask_diff_overlay = (mask_overlay_1 + mask_overlay_2) * 127
+    
+    plt.imshow(mask_diff_overlay, cmap='viridis')  # Overlay the mask with some transparency
+    plt.axis('off')
+    plt.show()

@@ -206,8 +206,9 @@ class SAM(SegmentationModel):
             text_prompt: The text prompt to be used for segmentation. The
                 tuple contains the text prompt, the box threshold, and the text threshold.
             boxes_prompt: The bounding boxes prompt to be used for segmentation.
-            points_prompt: The points prompt to be used for
-                segmentation. The tuple contains the point coordinates and the point labels.
+            points_prompt: The points prompt to be used for segmentation. The tuple contains
+                the point coordinates and the point labels. Label '1' stands for foreground points,
+                label '0' stands for background points.
             mask_input: The mask input to be used for segmentation.
 
         Returns:
