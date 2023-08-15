@@ -1,11 +1,17 @@
 API Documentation
 =================
 
-SegMate
+Segmentation Model
 -------
-.. currentmodule:: segmate.segmate
+.. currentmodule:: segmate.segmenter
 
-.. autoclass:: SegMate
+.. autoclass:: SegmentationModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+.. autoclass:: SAM
    :members:
    :undoc-members:
    :show-inheritance:
