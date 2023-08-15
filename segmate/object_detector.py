@@ -90,7 +90,7 @@ class GroundingDINO(ObjectDetector):
             
         return model
 
-    def transform_image(image: Image) -> torch.Tensor:
+    def transform_image(self, image: Image) -> torch.Tensor:
         """
         Transforms an image using standard transformations for image-based models.
 
