@@ -229,7 +229,6 @@ class SAM(SegmentationModel):
                 boxes_prompt, image.shape[:2])
         point_coords, point_labels = points_prompt
         if point_coords is not None and point_labels is not None:
-            # point_coords, point_labels = points_prompt
             point_coords = torch.tensor(point_coords).to(
                 self.device).unsqueeze(1)
             point_labels = torch.tensor(point_labels).to(
