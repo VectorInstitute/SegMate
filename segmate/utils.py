@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 import torch
 from torch.utils.data import Dataset
-import groundingdino.datasets.transforms as T
 
 
 def show_bounding_boxes(image: np.ndarray, bounding_boxes: np.ndarray) -> None:
@@ -130,25 +129,6 @@ def show_anns(anns: list, ax: plt.axes) -> None:
         color_mask = np.concatenate([np.random.random(3), [0.35]])
         img[m] = color_mask
     ax.imshow(img)
-
-
-def transform_image(image: Image) -> torch.Tensor:
-    """
-    Transforms an image using standard transformations for image-based models.
-
-    Parameters:
-    image (Image): The PIL Image to be transformed.
-
-    Returns:
-    torch.Tensor: The transformed image as a tensor.
-    """
-    transform = T.Compose([
-        T.RandomResize([800], max_size=1333),
-        T.ToTensor(),
-        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    ])
-    image_transformed, _ = transform(image, None)
-    return image_transformed
 
 
 def load_image(image_path: str) -> np.ndarray:

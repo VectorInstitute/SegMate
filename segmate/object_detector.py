@@ -11,6 +11,7 @@ from groundingdino.util.inference import predict
 from groundingdino.models import build_model
 from groundingdino.util.slconfig import SLConfig
 from groundingdino.util.utils import clean_state_dict
+import groundingdino.datasets.transforms as T
 from huggingface_hub import hf_hub_download
 
 import segmate.utils as utils
@@ -88,6 +89,23 @@ class GroundingDINO(ObjectDetector):
             
         return model
 
+    def transform_image(image: Image) -> torch.Tensor:
+        """
+        Transforms an image using standard transformations for image-based models.
+
+        Parameters:
+        image (Image): The PIL Image to be transformed.
+
+        Returns:
+        torch.Tensor: The transformed image as a tensor.
+        """
+        transform = T.Compose([
+            T.RandomResize([800], max_size=1333),
+            T.ToTensor(),
+            T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ])
+        image_transformed, _ = transform(image, None)
+        return image_transformed
 
     def detect(
             self,
@@ -109,7 +127,7 @@ class GroundingDINO(ObjectDetector):
             Tuple containing boxes, logits, and phrases.
         """
         image_pil = Image.fromarray(image_np)
-        image_trans = utils.transform_image(image_pil)
+        image_trans = self.transform_image(image_pil)
         boxes, logits, phrases = predict(model=self.model,
                                          image=image_trans,
                                          caption=text_prompt,
