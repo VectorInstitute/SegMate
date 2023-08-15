@@ -361,13 +361,14 @@ def get_masks_size(masks: np.ndarray) -> float:
     return mask_relative_size
 
 
-def plot_mask_diff(masks_1: np.ndarray, masks_2: np.ndarray) -> None:
+def plot_mask_diff(masks_1: np.ndarray, masks_2: np.ndarray, size: int=None) -> None:
     """
     Plots the difference between two masks.
 
     Args:
         masks_1 (np.ndarray): The first mask.
         masks_2 (np.ndarray): The second mask.
+        size (int): The size of the plot.
 
     Returns:
         None
@@ -390,6 +391,8 @@ def plot_mask_diff(masks_1: np.ndarray, masks_2: np.ndarray) -> None:
     
     mask_diff_overlay = (mask_overlay_1 + mask_overlay_2) * 127
     
+    if size:
+        plt.figure(figsize=(size, size))
     plt.imshow(mask_diff_overlay, cmap='viridis')  # Overlay the mask with some transparency
     plt.axis('off')
     plt.show()
