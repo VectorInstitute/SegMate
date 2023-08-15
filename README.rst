@@ -1,7 +1,7 @@
 .. start-in-sphinx-home-docs
 
 =========================================
-SegMate: A Segment Anything Model Toolkit
+SegMate: A Segmentation Toolkit
 =========================================
 
 .. image:: https://img.shields.io/pypi/v/segmate.svg
