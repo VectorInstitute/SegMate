@@ -4,7 +4,7 @@ Credits and License
 
 Main Contributors
 =================
-* Vahid Reza Khazaie (https://github.com/vrkh1996)
+* Vahid Reza Khazaie (https://github.com/vrkhazaie)
 * Marshall Wang (https://github.com/XkunW)
 
 License
