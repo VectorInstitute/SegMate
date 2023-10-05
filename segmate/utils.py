@@ -194,7 +194,7 @@ def show_image(
 def show_masks(
         image: np.ndarray,
         masks: np.ndarray, 
-        additional_masks: list(np.ndarray)=None,
+        additional_masks: list[np.ndarray]=None,
         size: int=None
     ) -> None:
     """
@@ -207,29 +207,15 @@ def show_masks(
         size (int): The size of the plot.
     """
 
-    count = 1
+    all_masks = [masks]
+
+    count = 2
     if additional_masks:
         count += len(additional_masks)
+        all_masks.extend(additional_masks)
 
     if size:
         plt.figure(figsize=(size * count, size))
-
-    def plot_each_maskset(image, image_pil, masks, index):
-        # Adjusted for single channel
-        mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)
-
-        for i, mask in enumerate(masks):
-            mask = mask[0, :, :]
-            # Assign a unique value for each mask
-            mask_overlay += ((mask > 0) * (i + 1)).astype(np.uint8)
-
-        # Normalize mask_overlay to be in [0, 255]
-        mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
-
-        plt.subplot(1, count, index)
-        plt.imshow(image_pil)
-        plt.imshow(mask_overlay, cmap='viridis', alpha=0.4)  # Overlay the mask with some transparency
-        plt.axis('off')
 
     image_pil = Image.fromarray(image)
     
@@ -238,14 +224,22 @@ def show_masks(
     plt.imshow(image_pil)
     plt.axis('off')
 
-    # Plot masks
-    plt.subplot(1, count, 2)
+    # Plot masks    
+    for i, mask_set in enumerate(all_masks):
+        mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)
 
-    plot_each_maskset(image, image_pil, masks, 2)
-    
-    if additional_masks:
-        for i, add_masks in enumerate(additional_masks):
-            plot_each_maskset(image, image_pil, add_masks, i + 3)
+        for i, mask in enumerate(mask_set):
+            mask = mask[0, :, :]
+            # Assign a unique value for each mask
+            mask_overlay += ((mask > 0) * (i + 1)).astype(np.uint8)
+
+        # Normalize mask_overlay to be in [0, 255]
+        mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
+
+        plt.subplot(1, count, i + 2)
+        plt.imshow(image_pil)
+        plt.imshow(mask_overlay, cmap='viridis', alpha=0.4)  # Overlay the mask with some transparency
+        plt.axis('off')
     
     plt.show()
 
@@ -421,7 +415,7 @@ def plot_mask_diff(masks_1: np.ndarray, masks_2: np.ndarray, size: int=None) -> 
     plt.axis('off')
     plt.show()
 
-def find_center_on_mask(mask: np.ndarray) -> tuple(int, int):
+def find_center_on_mask(mask: np.ndarray) -> tuple[int, int]:
     """
     Find the center point of a binary mask. If the center does not lie on the mask,
     find the nearest mask point to the center.
