@@ -74,38 +74,7 @@ class SAM(SegmentationModel):
             checkpoint=self.checkpoint)
         self.sam.to(self.device)
         self.predictor = SamPredictor(self.sam)
-    
-    def preprocess_input(
-        self,
-        image: np.ndarray,
-        bbox_prompt: np.ndarray
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Transform and preprocesses the input image and bounding boxes to the required size and
-        converts them to tensors.
-
-        Args:
-            image: The image to be transformed.
-            bbox_prompt: The bounding boxes to be transformed.
-
-        Returns:
-            image: The transformed image.
-            bbox_prompt: The transformed bounding boxes.
-        """
-        # transforming the image to the required size and preprocess it
-        transform = ResizeLongestSide(self.sam.image_encoder.img_size)
-        input_image = transform.apply_image(image)
-        input_image = torch.as_tensor(input_image, device=self.device)
-        input_image = input_image.permute(2, 0, 1).contiguous()[None, :, :, :]
-        input_image = self.sam.preprocess(input_image)
-
-        # transforming the bounding boxes to the required size
-        bbox_prompt = transform.apply_boxes(bbox_prompt, image.shape[:2])
-        bbox_prompt = torch.as_tensor(
-            bbox_prompt, dtype=torch.float, device=self.device)
-
-        return input_image, bbox_prompt
-    
+        
     def encode_input(
         self,
         input_image: torch.Tensor,
@@ -161,35 +130,46 @@ class SAM(SegmentationModel):
 
         return binary_mask
     
-    def generate_mask(
+    def revert_postprocess(
         self,
-        image_embedding: torch.Tensor,
-        sparse_embeddings: torch.Tensor,
-        dense_embeddings: torch.Tensor,
-        multimask_output: bool = False
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        masks: torch.Tensor,
+        input_size: tuple[int, ...],
+        original_size: tuple[int, ...],
+    ) -> torch.Tensor:
         """
-        Generates the segmentation mask.
+        Add padding and downscale masks to the mask_decoder's output size.
 
-        Args:
-            image_embedding: The encoded image.
-            sparse_embeddings: The encoded sparse bounding boxes.
-            dense_embeddings: The encoded dense bounding boxes.
+        Arguments:
+          masks (torch.Tensor): Batched masks in the original image format,
+            in BxCxHxW format.
+          input_size (tuple(int, int)): The size of the image input to the
+            model, in (H, W) format. Used to add padding.
+          original_size (tuple(int, int)): The original size of the image
+            before resizing for input to the model, in (H, W) format.
 
         Returns:
-            low_res_masks: The generated segmentation mask.
-            iou_predictions: The generated IOU predictions.
+          (torch.Tensor): Batched masks in BxCxHxW format, ready for the mask_decoder.
         """
-        # generating the segmentation mask from the image and the prompt embeddings
-        low_res_masks, iou_predictions = self.sam.mask_decoder(
-            image_embeddings=image_embedding,
-            image_pe=self.sam.prompt_encoder.get_dense_pe(),
-            sparse_prompt_embeddings=sparse_embeddings,
-            dense_prompt_embeddings=dense_embeddings,
-            multimask_output=multimask_output,
+
+        # Downscale from original size to input size
+        masks = F.interpolate(masks, input_size, mode="bilinear", align_corners=False)
+
+        # Calculate required padding
+        pad_height = self.sam.image_encoder.img_size - input_size[0]
+        pad_width = self.sam.image_encoder.img_size - input_size[1]
+        
+        # Add padding to the masks (Pad format is: left, right, top, bottom)
+        masks = F.pad(masks, (0, pad_width, 0, pad_height))
+
+        # Downscale to the mask_decoder's output size
+        masks = F.interpolate(
+            masks,
+            original_size,
+            mode="bilinear",
+            align_corners=False,
         )
 
-        return low_res_masks, iou_predictions
+        return masks
     
     def segment(
         self,
@@ -197,6 +177,8 @@ class SAM(SegmentationModel):
         boxes_prompt: np.ndarray = None,
         points_prompt: tuple[np.ndarray, np.ndarray] = (None, None),
         mask_input: np.ndarray = None,
+        multimask_output: bool = True,
+        convert_to_np: bool = True,
     ) -> np.ndarray:
         """
         Performs image segmentation using the loaded image and input prompt.
@@ -245,8 +227,11 @@ class SAM(SegmentationModel):
             point_labels=point_labels,
             boxes=boxes_prompt,
             mask_input=mask_input,
+            multimask_output=multimask_output,
         )
-        masks = masks.detach().cpu().numpy().astype(np.uint8)
+
+        if convert_to_np:
+            masks = masks.detach().cpu().numpy().astype(np.uint8)
 
         return masks
 
@@ -302,7 +287,8 @@ class SAM(SegmentationModel):
             self,
             input_image: np.ndarray,
             bbox_prompt: np.ndarray,
-            original_input_size: int
+            original_input_size: int,
+            multimask_output: bool = False
         ) -> np.ndarray:
         """
         Performs a forward pass on the image and the prompt.
@@ -320,8 +306,13 @@ class SAM(SegmentationModel):
             input_image, bbox_prompt)
 
         # generating the segmentation mask from the image and the prompt embeddings
-        low_res_masks, _ = self.generate_mask(
-            image_embedding, sparse_embeddings, dense_embeddings)
+        low_res_masks, _ = self.sam.mask_decoder(
+            image_embeddings=image_embedding,
+            image_pe=self.sam.prompt_encoder.get_dense_pe(),
+            sparse_prompt_embeddings=sparse_embeddings,
+            dense_prompt_embeddings=dense_embeddings,
+            multimask_output=multimask_output,
+        )
 
         # postprocessing the segmentation mask and converting it to a numpy array
         binary_mask = self.postprocess_mask(low_res_masks, transformed_input_size=tuple(
