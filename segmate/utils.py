@@ -228,10 +228,10 @@ def show_masks(
     for i, mask_set in enumerate(all_masks):
         mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)
 
-        for i, mask in enumerate(mask_set):
+        for j, mask in enumerate(mask_set):
             mask = mask[0, :, :]
             # Assign a unique value for each mask
-            mask_overlay += ((mask > 0) * (i + 1)).astype(np.uint8)
+            mask_overlay += ((mask > 0) * (j + 1)).astype(np.uint8)
 
         # Normalize mask_overlay to be in [0, 255]
         mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
@@ -284,23 +284,6 @@ def binarize_mask(
         binary_mask = np.where(binary_mask > 1, 1, binary_mask)
 
     return binary_mask
-
-def convert_bboxes2center_points(bboxes: np.ndarray) -> np.ndarray:
-    """
-    Converts the bounding boxes to center points.
-
-    Args:
-        bboxes (np.ndarray): The bounding boxes of the image.
-
-    Returns:
-        center_points (np.ndarray): The center points of the bounding boxes.
-    """
-    # converting the bounding boxes to center points
-    center_points = np.zeros((bboxes.shape[0], 2))
-    center_points[:, 0] = (bboxes[:, 0] + bboxes[:, 2]) / 2
-    center_points[:, 1] = (bboxes[:, 1] + bboxes[:, 3]) / 2
-
-    return center_points
 
 
 def save_mask(mask: np.ndarray, output_path: str) -> None:
@@ -414,6 +397,7 @@ def plot_mask_diff(masks_1: np.ndarray, masks_2: np.ndarray, size: int=None) -> 
     plt.imshow(mask_diff_overlay, cmap='viridis')  # Overlay the mask with some transparency
     plt.axis('off')
     plt.show()
+
 
 def find_center_on_mask(mask: np.ndarray) -> tuple[int, int]:
     """
