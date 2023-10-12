@@ -9,7 +9,7 @@ from typing import Union
 import numpy as np
 import torch
 from torch.nn import functional as F
-from torch.utils.data import Dataset
+
 from tqdm import tqdm
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 from segment_anything.utils.transforms import ResizeLongestSide
@@ -74,42 +74,13 @@ class SAM(SegmentationModel):
             checkpoint=self.checkpoint)
         self.sam.to(self.device)
         self.predictor = SamPredictor(self.sam)
-    
-    def preprocess_input(
-        self,
-        image: np.ndarray,
-        bbox_prompt: np.ndarray
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Transform and preprocesses the input image and bounding boxes to the required size and
-        converts them to tensors.
-
-        Args:
-            image: The image to be transformed.
-            bbox_prompt: The bounding boxes to be transformed.
-
-        Returns:
-            image: The transformed image.
-            bbox_prompt: The transformed bounding boxes.
-        """
-        # transforming the image to the required size and preprocess it
-        transform = ResizeLongestSide(self.sam.image_encoder.img_size)
-        input_image = transform.apply_image(image)
-        input_image = torch.as_tensor(input_image, device=self.device)
-        input_image = input_image.permute(2, 0, 1).contiguous()[None, :, :, :]
-        input_image = self.sam.preprocess(input_image)
-
-        # transforming the bounding boxes to the required size
-        bbox_prompt = transform.apply_boxes(bbox_prompt, image.shape[:2])
-        bbox_prompt = torch.as_tensor(
-            bbox_prompt, dtype=torch.float, device=self.device)
-
-        return input_image, bbox_prompt
-    
+        
     def encode_input(
         self,
         input_image: torch.Tensor,
-        bbox_prompt: torch.Tensor
+        boxes_prompt: torch.Tensor = None,
+        points_prompt: tuple[torch.Tensor, torch.Tensor] = (None, None),
+        mask_prompt: torch.Tensor = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Encodes the input image and bounding boxes.
@@ -128,9 +99,9 @@ class SAM(SegmentationModel):
 
         # encoding the prompt with sam's prompt encoder
         sparse_embeddings, dense_embeddings = self.sam.prompt_encoder(
-            points=None,
-            boxes=bbox_prompt.squeeze(0),
-            masks=None,
+            points=points_prompt,
+            boxes=boxes_prompt,
+            masks=mask_prompt,
         )
 
         return image_embedding, sparse_embeddings, dense_embeddings
@@ -161,35 +132,46 @@ class SAM(SegmentationModel):
 
         return binary_mask
     
-    def generate_mask(
+    def revert_postprocess(
         self,
-        image_embedding: torch.Tensor,
-        sparse_embeddings: torch.Tensor,
-        dense_embeddings: torch.Tensor,
-        multimask_output: bool = False
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        masks: torch.Tensor,
+        input_size: tuple[int, ...],
+        original_size: tuple[int, ...],
+    ) -> torch.Tensor:
         """
-        Generates the segmentation mask.
+        Add padding and downscale masks to the mask_decoder's output size.
 
-        Args:
-            image_embedding: The encoded image.
-            sparse_embeddings: The encoded sparse bounding boxes.
-            dense_embeddings: The encoded dense bounding boxes.
+        Arguments:
+          masks (torch.Tensor): Batched masks in the original image format,
+            in BxCxHxW format.
+          input_size (tuple(int, int)): The size of the image input to the
+            model, in (H, W) format. Used to add padding.
+          original_size (tuple(int, int)): The original size of the image
+            before resizing for input to the model, in (H, W) format.
 
         Returns:
-            low_res_masks: The generated segmentation mask.
-            iou_predictions: The generated IOU predictions.
+          (torch.Tensor): Batched masks in BxCxHxW format, ready for the mask_decoder.
         """
-        # generating the segmentation mask from the image and the prompt embeddings
-        low_res_masks, iou_predictions = self.sam.mask_decoder(
-            image_embeddings=image_embedding,
-            image_pe=self.sam.prompt_encoder.get_dense_pe(),
-            sparse_prompt_embeddings=sparse_embeddings,
-            dense_prompt_embeddings=dense_embeddings,
-            multimask_output=multimask_output,
+
+        # Downscale from original size to input size
+        masks = F.interpolate(masks, input_size, mode="bilinear", align_corners=False)
+
+        # Calculate required padding
+        pad_height = self.sam.image_encoder.img_size - input_size[0]
+        pad_width = self.sam.image_encoder.img_size - input_size[1]
+        
+        # Add padding to the masks (Pad format is: left, right, top, bottom)
+        masks = F.pad(masks, (0, pad_width, 0, pad_height))
+
+        # Downscale to the mask_decoder's output size
+        masks = F.interpolate(
+            masks,
+            original_size,
+            mode="bilinear",
+            align_corners=False,
         )
 
-        return low_res_masks, iou_predictions
+        return masks
     
     def segment(
         self,
@@ -197,6 +179,8 @@ class SAM(SegmentationModel):
         boxes_prompt: np.ndarray = None,
         points_prompt: tuple[np.ndarray, np.ndarray] = (None, None),
         mask_input: np.ndarray = None,
+        multimask_output: bool = True,
+        convert_to_np: bool = True,
     ) -> np.ndarray:
         """
         Performs image segmentation using the loaded image and input prompt.
@@ -245,8 +229,11 @@ class SAM(SegmentationModel):
             point_labels=point_labels,
             boxes=boxes_prompt,
             mask_input=mask_input,
+            multimask_output=multimask_output,
         )
-        masks = masks.detach().cpu().numpy().astype(np.uint8)
+
+        if convert_to_np:
+            masks = masks.detach().cpu().numpy().astype(np.uint8)
 
         return masks
 
@@ -298,55 +285,29 @@ class SAM(SegmentationModel):
 
         return masks
 
-    def forward_pass(
-            self,
-            input_image: np.ndarray,
-            bbox_prompt: np.ndarray,
-            original_input_size: int
-        ) -> np.ndarray:
-        """
-        Performs a forward pass on the image and the prompt.
-
-        Args:
-            input_image: The image to be segmented.
-            bbox_prompt: The bounding boxes prompt to be used for segmentation.
-            original_input_size: The size of the original input image.
-
-        Returns:
-            binary_mask: The binarized segmentation mask of the image.
-        """
-        # encoding the image and the prompt with sam's encoders
-        image_embedding, sparse_embeddings, dense_embeddings = self.encode_input(
-            input_image, bbox_prompt)
-
-        # generating the segmentation mask from the image and the prompt embeddings
-        low_res_masks, _ = self.generate_mask(
-            image_embedding, sparse_embeddings, dense_embeddings)
-
-        # postprocessing the segmentation mask and converting it to a numpy array
-        binary_mask = self.postprocess_mask(low_res_masks, transformed_input_size=tuple(
-            input_image.shape[-2:]), original_input_size=original_input_size)
-
-        return binary_mask
-
     def fine_tune(
             self,
-            train_data: Dataset,
             original_input_size: int,
             criterion: torch.nn,
             optimizer: torch.optim,
             train_loader: torch.utils.data.DataLoader,
-            num_epochs: int = 10
+            prompt_type: str,
+            num_epochs: int = 10,
+            multimask_output: bool = True
         ) -> None:
         """
         Fine-tunes the SAM model using the provided training.
 
         Args:
-            train_data: The training data to be used for fine-tuning.
             original_input_size: The size of the original input image.
             criterion: The loss function to be used for fine-tuning.
             optimizer: The optimizer to be used for fine-tuning.
+            train_loader: The training data loader to be used for fine-tuning. The data loader 
+                should return a tuple of (input_image, prompt, gt_mask).
+            prompt_type: The type of the prompt to be used for fine-tuning. The value can only be
+                "boxes_prompt", "points_prompt" or "mask_prompt".
             num_epochs: The number of epochs to be used for fine-tuning.
+            multimask_output: Whether to use multi-mask output or not.
 
         Returns:
             None
@@ -356,25 +317,36 @@ class SAM(SegmentationModel):
 
         for epoch in range(num_epochs):
             epoch_losses = []
-            for input_image, box_prompt, gt_mask in tqdm(train_loader):
-                try:
-                    # forward pass
-                    pred_mask = self.forward_pass(
-                        input_image, box_prompt, original_input_size=original_input_size)
+            for input_image, prompt, gt_mask in tqdm(train_loader):
+                # encode the image and the prompt with sam's encoders, frozen weights
+                with torch.no_grad():
+                    image_embedding, sparse_embeddings, dense_embeddings = self.encode_input(
+                        **{prompt_type: prompt, **{"input_image": input_image}})
+                    
+                # generating the segmentation mask from the image and the prompt embeddings
+                low_res_masks, _ = self.sam.mask_decoder(
+                    image_embeddings=image_embedding,
+                    image_pe=self.sam.prompt_encoder.get_dense_pe(),
+                    sparse_prompt_embeddings=sparse_embeddings,
+                    dense_prompt_embeddings=dense_embeddings,
+                    multimask_output=multimask_output,
+                )
+                    
+                processed_masks = self.postprocess_mask(low_res_masks, transformed_input_size=tuple(
+                    input_image.shape[-2:]), original_input_size=original_input_size)
 
-                    # compute loss
-                    loss = criterion(pred_mask, gt_mask)
+                pred_mask = F.normalize(F.threshold(processed_masks, 0.0, 0)).to(self.device)
 
-                    # backward pass (compute gradients of parameters w.r.t. loss)
-                    optimizer.zero_grad()
-                    loss.backward()
+                # compute loss
+                loss = criterion(pred_mask, gt_mask)
 
-                    # optimize
-                    optimizer.step()
-                    epoch_losses.append(loss.item())
-                except:
-                    print("No bounding box found!")
-                    continue
+                # backward pass (compute gradients of parameters w.r.t. loss)
+                optimizer.zero_grad()
+                loss.backward()
+
+                # optimize
+                optimizer.step()
+                epoch_losses.append(loss.item())
 
             print(f'EPOCH: {epoch}')
             print(f'Mean loss: {mean(epoch_losses)}')

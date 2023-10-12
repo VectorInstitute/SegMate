@@ -44,9 +44,9 @@ Getting Started
 .. code-block:: python
 
     sm.fine_tune(
-        train_data=train_dataset, 
         original_input_size=500, 
         criterion=loss, 
         optimizer=optim, 
-        lr=1e-5, 
+        train_loader=train_loader,
+        prompt_type="points_prompt",
         num_epochs=10)

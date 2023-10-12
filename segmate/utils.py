@@ -155,7 +155,6 @@ def load_image(image_path: str) -> np.ndarray:
 
 def show_image(
     img: np.ndarray,
-    img_section: str=None,
     size: int=8,
     show_axis: bool=False, 
     inter: int=500,
@@ -175,17 +174,6 @@ def show_image(
             label '1' stands for foreground points, label '0' stands for background points.
     """
     height, width, _ = img.shape
-    
-    img_list = {
-        "top_left": img[:height//2, :width//2, :],
-        "top_right": img[:height//2, width//2:, :],
-        "bottom_left": img[height//2:, :width//2, :],
-        "bottom_right": img[height//2:, width//2:, :]
-    }
-    
-    if img_section:
-        img = img_list[img_section]
-        height, width, _ = img.shape
         
     f = plt.figure(figsize=(size, size))
     plt.xticks(np.arange(0, width, inter))
@@ -203,33 +191,56 @@ def show_image(
     plt.show()
 
 
-def show_masks(image: np.ndarray, masks: np.ndarray, size: int=None) -> None:
+def show_masks(
+        image: np.ndarray,
+        masks: np.ndarray, 
+        additional_masks: list[np.ndarray]=None,
+        size: int=None
+    ) -> None:
     """
     Shows the masks.
 
     Args:
         image (numpy.ndarray): The image to be shown.
-        masks (numpy.ndarray): The masks to be shown.
-        int (int): The size of the plot.
+        masks (numpy.ndarray): The mask overlayed image to be shown.
+        additional_masks (list(numpy.ndarray)): Additional masks to be shown, usually for comparison.
+        size (int): The size of the plot.
     """
-    image_pil = Image.fromarray(image)
-    # Adjusted for single channel
-    mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)
 
-    for i, mask in enumerate(masks):
-        mask = mask[0, :, :]
-        # Assign a unique value for each mask
-        mask_overlay += ((mask > 0) * (i + 1)).astype(np.uint8)
+    all_masks = [masks]
 
-    # Normalize mask_overlay to be in [0, 255]
-    mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
+    count = 2
+    if additional_masks:
+        count += len(additional_masks)
+        all_masks.extend(additional_masks)
 
     if size:
-        plt.figure(figsize=(size, size))
+        plt.figure(figsize=(size * count, size))
 
+    image_pil = Image.fromarray(image)
+    
+    # Plot original image
+    plt.subplot(1, count, 1)
     plt.imshow(image_pil)
-    plt.imshow(mask_overlay, cmap='viridis', alpha=0.4)  # Overlay the mask with some transparency
     plt.axis('off')
+
+    # Plot masks    
+    for i, mask_set in enumerate(all_masks):
+        mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)
+
+        for j, mask in enumerate(mask_set):
+            mask = mask[0, :, :]
+            # Assign a unique value for each mask
+            mask_overlay += ((mask > 0) * (j + 1)).astype(np.uint8)
+
+        # Normalize mask_overlay to be in [0, 255]
+        mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
+
+        plt.subplot(1, count, i + 2)
+        plt.imshow(image_pil)
+        plt.imshow(mask_overlay, cmap='viridis', alpha=0.4)  # Overlay the mask with some transparency
+        plt.axis('off')
+    
     plt.show()
 
 
@@ -273,23 +284,6 @@ def binarize_mask(
         binary_mask = np.where(binary_mask > 1, 1, binary_mask)
 
     return binary_mask
-
-def convert_bboxes2center_points(bboxes: np.ndarray) -> np.ndarray:
-    """
-    Converts the bounding boxes to center points.
-
-    Args:
-        bboxes (np.ndarray): The bounding boxes of the image.
-
-    Returns:
-        center_points (np.ndarray): The center points of the bounding boxes.
-    """
-    # converting the bounding boxes to center points
-    center_points = np.zeros((bboxes.shape[0], 2))
-    center_points[:, 0] = (bboxes[:, 0] + bboxes[:, 2]) / 2
-    center_points[:, 1] = (bboxes[:, 1] + bboxes[:, 3]) / 2
-
-    return center_points
 
 
 def save_mask(mask: np.ndarray, output_path: str) -> None:
@@ -403,3 +397,38 @@ def plot_mask_diff(masks_1: np.ndarray, masks_2: np.ndarray, size: int=None) -> 
     plt.imshow(mask_diff_overlay, cmap='viridis')  # Overlay the mask with some transparency
     plt.axis('off')
     plt.show()
+
+
+def find_center_on_mask(mask: np.ndarray) -> tuple[int, int]:
+    """
+    Find the center point of a binary mask. If the center does not lie on the mask,
+    find the nearest mask point to the center.
+
+    Args:
+    - mask (numpy.ndarray): A 2D binary mask.
+
+    Returns:
+    - tuple: (y, x) coordinates of the center point on the mask.
+    """
+    # Find where the mask is true
+    rows, cols = np.where(mask)
+
+    # Calculate bounding box
+    top_row = np.min(rows)
+    bottom_row = np.max(rows)
+    left_col = np.min(cols)
+    right_col = np.max(cols)
+
+    # Calculate center of bounding box
+    center_row = (top_row + bottom_row) // 2
+    center_col = (left_col + right_col) // 2
+
+    # Check if the center is on the mask
+    if mask[center_row, center_col]:
+        return center_row, center_col
+
+    # If the center is not on the mask, find the nearest mask point
+    distances = (rows - center_row)**2 + (cols - center_col)**2
+    nearest_index = np.argmin(distances)
+
+    return rows[nearest_index], cols[nearest_index]
