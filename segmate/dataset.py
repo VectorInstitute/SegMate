@@ -75,6 +75,7 @@ class BISDataset(Dataset):
         box_prompt = utils.convert_coco_to_sam(box_prompt)
         box_prompt = transform.apply_boxes(box_prompt, image.shape[:2])
         box_prompt = torch.as_tensor(box_prompt, device=self.device)
+        box_prompt = box_prompt.squeeze()
 
         # get the ground truth segmentation mask
         gt_mask = utils.get_segmentation_mask(item["objects"]['segmentation'], mask_size)

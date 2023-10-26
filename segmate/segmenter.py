@@ -12,7 +12,6 @@ from torch.nn import functional as F
 
 from tqdm import tqdm
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
-from segment_anything.utils.transforms import ResizeLongestSide
 
 import segmate.utils as utils
 
@@ -79,7 +78,7 @@ class SAM(SegmentationModel):
         self,
         input_image: torch.Tensor,
         boxes_prompt: torch.Tensor = None,
-        points_prompt: tuple[torch.Tensor, torch.Tensor] = (None, None),
+        points_prompt: tuple[torch.Tensor, torch.Tensor] = None,
         mask_prompt: torch.Tensor = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
@@ -321,7 +320,7 @@ class SAM(SegmentationModel):
                 # encode the image and the prompt with sam's encoders, frozen weights
                 with torch.no_grad():
                     image_embedding, sparse_embeddings, dense_embeddings = self.encode_input(
-                        **{prompt_type: prompt, **{"input_image": input_image}})
+                        **{"input_image": input_image, prompt_type: prompt.squeeze(0)})
                     
                 # generating the segmentation mask from the image and the prompt embeddings
                 low_res_masks, _ = self.sam.mask_decoder(
