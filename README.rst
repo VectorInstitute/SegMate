@@ -27,7 +27,7 @@ Features
 - **Finetune** SAM on custom datasets
 - `GroundingDINO <https://github.com/IDEA-Research/GroundingDINO/tree/main>`_ **integration** for text prompt segmentation
 - Training a **custom decoder** to auto segment a specific type of object
-- Training a **prompt embedding** to auto segment a specific type of object
+- **Prompt-Tuning SAM**: Training a prompt embedding that segments a specific type of object
 
 .. end-in-sphinx-home-docs
 
