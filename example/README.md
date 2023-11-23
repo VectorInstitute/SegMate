@@ -7,3 +7,4 @@ This is a set of ipython notebooks that demonstrates:
   * [Manully generate point prompts (Google Colab)](./create_prompts.ipynb)
   * [SAM prompt tuning](./sam_prompt_tuning.ipynb)
 * Training a custom decoder to automatically segment objects of interest: [Custom decoder demo](./custom_decoder.ipynb)
+* Fine-tune SAM on Inria Aerial Image Dataset: [SatSAM demo](./SatSAM.ipynb)
