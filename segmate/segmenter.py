@@ -193,6 +193,8 @@ class SAM(SegmentationModel):
                 the point coordinates and the point labels. Label '1' stands for foreground points,
                 label '0' stands for background points.
             mask_input: The mask input to be used for segmentation.
+            multimask_output: Whether to use multi-mask output or not.
+            convert_to_np: Whether to convert the output to a numpy array or not.
 
         Returns:
             binary_mask: The binarized segmentation mask of the image.
