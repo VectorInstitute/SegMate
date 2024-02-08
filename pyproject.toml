@@ -23,7 +23,6 @@ dependencies = [
   "torch>=2.0.1",
   "datasets>=2.13.0",
   "segment_anything",
-  "groundingdino",
   "pycocotools",
   "opencv-python>=4.7.0",
   "huggingface_hub",
