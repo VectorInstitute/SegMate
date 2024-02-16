@@ -227,7 +227,10 @@ def show_masks(
     # Plot masks    
     for i, mask_set in enumerate(all_masks):
         mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)
-
+        
+        if mask_set.ndim == 3:
+        # Single mask
+            mask_set = np.expand_dims(mask_set, axis=0)
         for j, mask in enumerate(mask_set):
             mask = mask[0, :, :]
             # Assign a unique value for each mask
@@ -242,7 +245,7 @@ def show_masks(
         plt.axis('off')
     
     plt.show()
-
+    
 
 def show_points(image: np.ndarray, point_coords: list, point_labels: list) -> None:
     """

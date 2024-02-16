@@ -73,7 +73,48 @@ class SAM(SegmentationModel):
             checkpoint=self.checkpoint)
         self.sam.to(self.device)
         self.predictor = SamPredictor(self.sam)
+
+    def prepare_image(self, image: np.ndarray) -> torch.Tensor:
+        """
+        Prepare the image for the model.
+
+        Args:
+            image: The image to prepare.
+
+        Returns:
+            input_image: The prepared image.
+        """
+        input_image = self.predictor.transform.apply_image(image)
+        input_image = torch.as_tensor(input_image, device=self.device)
+        input_image = input_image.permute(2, 0, 1).contiguous()[None, :, :, :]
+        input_image = self.sam.preprocess(input_image)
+
+        return input_image
+    
+    def prepare_points(self, 
+            coords: list[list],
+            labels: list[int],
+            image: torch.Tensor
+        ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Prepare the points for the model.
+
+        Args:
+            coords: The coordinates of the points.
+            labels: The labels of the points.
+            image: The image to use for the transformation.
+
+        Returns:
+            coords_tensor: The prepared coordinates.
+            labels_tensor: The prepared labels.
+        """
+        coords_tensor = torch.tensor(coords).to(self.device).unsqueeze(1)
+        labels_tensor = torch.tensor(labels).to(self.device).unsqueeze(1)
+        coords_tensor = self.predictor.transform.apply_coords_torch(
+                    coords_tensor, image.shape[:2])
         
+        return coords_tensor, labels_tensor
+
     def encode_input(
         self,
         input_image: torch.Tensor,
