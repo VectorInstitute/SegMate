@@ -304,6 +304,24 @@ def save_mask(mask: np.ndarray, output_path: str) -> None:
     cv2.imwrite(output_path, mask)
 
 
+def save_mask(gen_mask: np.array, output_path: str) -> None:
+    """
+    Saves the SAM-generated segmentation mask to the specified output path.
+
+    Args:
+        gen_mask: The generated segmentation mask (N, C, H, W).
+        output_path: The path to save the segmentation mask.
+
+    Returns:
+        None
+    """
+    binary_mask = gen_mask.sum(axis=0)
+    binary_mask = np.transpose(binary_mask, (1, 2, 0))
+    non_zero_pixels = np.any(binary_mask!=0, axis=2)
+    binary_mask[non_zero_pixels] = [255, 255, 255]
+    cv2.imwrite(output_path, binary_mask)
+
+
 def visualize_automask(
     image: Union[str, np.ndarray],
     masks: np.ndarray,
