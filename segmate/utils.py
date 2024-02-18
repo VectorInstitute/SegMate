@@ -288,23 +288,26 @@ def binarize_mask(
     return binary_mask
 
 
-def save_mask(gen_mask: np.array, output_path: str) -> None:
+def save_mask(image: np.array, gen_mask: np.array, output_path: str) -> None:
     """
     Saves the SAM-generated segmentation mask to the specified output path.
 
     Args:
+        image: The original image.
         gen_mask: The generated segmentation mask (N, C, H, W).
         output_path: The path to save the segmentation mask.
 
     Returns:
         None
     """
-    binary_mask = gen_mask.sum(axis=0)
-    binary_mask = np.transpose(binary_mask, (1, 2, 0))
-    non_zero_pixels = np.any(binary_mask!=0, axis=2)
-    binary_mask[non_zero_pixels] = [255, 255, 255]
-    cv2.imwrite(output_path, binary_mask)
-
+    mask_overlay = np.zeros_like(image[..., 0], dtype=np.uint8)
+    for i, mask in enumerate(gen_mask):
+        mask = mask[0, :, :]
+        # Assign a unique value for each mask
+        mask_overlay += ((mask > 0) * (i + 1)).astype(np.uint8)
+    mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
+    mask_overlay = np.repeat(mask_overlay[:, :, np.newaxis], 3, axis=2)
+    cv2.imwrite(output_path, mask_overlay)
 
 def visualize_automask(
     image: Union[str, np.ndarray],
