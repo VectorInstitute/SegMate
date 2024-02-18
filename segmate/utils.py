@@ -195,7 +195,7 @@ def show_masks(
         image: np.ndarray,
         masks: np.ndarray, 
         additional_masks: list[np.ndarray]=None,
-        size: int=None
+        size: int=8
     ) -> None:
     """
     Shows the masks.
@@ -214,8 +214,7 @@ def show_masks(
         count += len(additional_masks)
         all_masks.extend(additional_masks)
 
-    if size:
-        plt.figure(figsize=(size * count, size))
+    plt.figure(figsize=(size * count, size))
 
     image_pil = Image.fromarray(image)
     
@@ -287,21 +286,6 @@ def binarize_mask(
         binary_mask = np.where(binary_mask > 1, 1, binary_mask)
 
     return binary_mask
-
-
-def save_mask(mask: np.ndarray, output_path: str) -> None:
-    """
-    Saves the segmentation mask to the specified output path.
-
-    Args:
-        binary_mask: The binarized segmentation mask of the image.
-        output_path: The path to save the segmentation map.
-
-    Returns:
-        None
-    """
-    # saving the segmentation mask
-    cv2.imwrite(output_path, mask)
 
 
 def save_mask(gen_mask: np.array, output_path: str) -> None:
